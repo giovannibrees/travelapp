@@ -1,6 +1,6 @@
 /* Travel - service worker. Network-first for everything, cache fallback for
    offline. The DC/Google sync API (/trips, /sync) is never cached. */
-const CACHE = "travel-v1";
+const CACHE = "travel-v2";
 const SHELL = ["./travel-app.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -17,6 +17,7 @@ self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  if (url.origin !== location.origin) return; // let cross-origin (Wikipedia, images, fonts) go straight to network
   if (url.pathname.endsWith("/trips") || url.pathname.endsWith("/sync")) return; // always hit the network for sync
   e.respondWith(
     fetch(req)

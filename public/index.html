@@ -322,27 +322,30 @@
   function destPhoto(code,w){code=(code||"").trim().toUpperCase();var u=DEST_PHOTOS[code]||"https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1000&q=80";
     if(w)u=u.replace(/width=\d+/,"width="+w).replace(/[?&]w=\d+/,function(m){return m[0]+"w="+w;});return u;}
 
-  // Real photo of the destination, by city/place name, from Wikipedia's lead image.
-  // Cached in memory + localStorage so it only fetches once per place.
+  // Real photo of the destination, by city/place name. Tries Wikipedia's sized
+  // page image, then the REST summary image. Only SUCCESSFUL results are cached,
+  // so a transient miss retries next time.
   var photoCache={};
+  async function wikiImage(name){
+    try{
+      var u="https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=1000&titles="+encodeURIComponent(name);
+      var r=await fetch(u);
+      if(r.ok){var d=await r.json();var pg=(d.query&&d.query.pages)||{};var f=pg[Object.keys(pg)[0]];var s=f&&f.thumbnail&&f.thumbnail.source;if(s)return s;}
+    }catch(e){}
+    try{
+      var r2=await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(name));
+      if(r2.ok){var d2=await r2.json();var s2=(d2.originalimage&&d2.originalimage.source)||(d2.thumbnail&&d2.thumbnail.source);if(s2)return s2;}
+    }catch(e){}
+    return"";
+  }
   async function cityPhoto(name){
     name=(name||"").trim();if(!name)return"";
     var k=name.toLowerCase();
-    if(photoCache[k]!==undefined)return photoCache[k];
-    try{var ls=localStorage.getItem("photo:"+k);if(ls!=null){photoCache[k]=ls;return ls;}}catch(e){}
-    try{
-      var u="https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=1000&titles="+encodeURIComponent(name);
-      var res=await fetch(u);
-      if(res.ok){
-        var d=await res.json();
-        var pages=(d.query&&d.query.pages)||{};
-        var first=pages[Object.keys(pages)[0]];
-        var url=(first&&first.thumbnail&&first.thumbnail.source)||"";
-        photoCache[k]=url;try{localStorage.setItem("photo:"+k,url);}catch(e){}
-        return url;
-      }
-    }catch(e){}
-    photoCache[k]="";return"";
+    if(photoCache[k])return photoCache[k];
+    try{var ls=localStorage.getItem("photo2:"+k);if(ls)return(photoCache[k]=ls);}catch(e){}
+    var url=await wikiImage(name);
+    if(url){photoCache[k]=url;try{localStorage.setItem("photo2:"+k,url);}catch(e){}}
+    return url;
   }
   // After a render, upgrade every <img data-city> from the generic placeholder to the real city photo.
   function hydratePhotos(){
