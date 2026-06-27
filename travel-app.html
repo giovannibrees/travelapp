@@ -203,6 +203,24 @@
   .ig-side .btn{width:100%;justify-content:center;padding:14px;font-weight:700;margin-top:10px}
   .ig-side .btn:first-of-type{margin-top:0}
 
+  .cal-toggle{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px;width:fit-content;margin-bottom:18px}
+  .cal-tab{font-family:var(--body);font-weight:600;font-size:13px;padding:7px 16px;border-radius:999px;border:none;background:transparent;color:var(--muted);cursor:pointer}
+  .cal-tab.active{background:var(--ink);color:var(--cream)}
+  .cal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .cal-month{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 16px 18px}
+  .cal-mh{font-family:var(--display);font-weight:700;font-size:17px;margin-bottom:12px}
+  .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-dow{font-family:var(--mono);font-size:10px;color:var(--faint);text-align:center;padding-bottom:4px}
+  .cal-d{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:var(--ink);border-radius:8px}
+  .cal-d.empty{visibility:hidden}
+  .cal-d.trav{background:var(--c);color:#fff;font-weight:600}
+  .cal-d.today{outline:2px solid var(--ink);outline-offset:-2px}
+  .cal-legend{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px}
+  .cal-lh{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .cal-leg{display:flex;align-items:center;gap:10px;font-family:var(--body);font-size:14px;padding:6px 0}
+  .cal-leg .sw{width:12px;height:12px;border-radius:4px;flex:none}
+  .cal-leg .dt{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto}
+  @media(max-width:760px){.cal-grid{grid-template-columns:1fr}}
   .auth-scrim{position:fixed;inset:0;background:var(--canvas);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
   .auth-scrim.show{display:flex}
   .auth-card{width:100%;max-width:360px;text-align:center;animation:riseIn .5s ease both}
@@ -262,6 +280,7 @@
     <button class="tab active" data-tab="upcoming">Upcoming <span class="cnt" id="c-up"></span></button>
     <button class="tab" data-tab="past">Past <span class="cnt" id="c-past"></span></button>
     <button class="tab" data-tab="wishlist">Wishlist <span class="cnt" id="c-wish"></span></button>
+    <button class="tab" data-tab="calendar">Calendar</button>
   </nav>
 
   <section class="section">
@@ -300,7 +319,7 @@
   }catch(e){console.error("save",e);}}
 
   var trips=[], wishes=[], home="OPO", settings={workerUrl:""}, syncState="local", authToken="";
-  var tab="upcoming", openSet={};
+  var tab="upcoming", openSet={}, calMonths=6;
 
   /* ===================== date / util helpers (preserved) ===================== */
   function todayISO(){var d=new Date();d.setHours(0,0,0,0);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -477,12 +496,49 @@
     '</article>';
   }
 
+  /* ===================== calendar overview (3 / 6 / 12 months) ===================== */
+  function isoOf(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  var CAL_PAL=["var(--cobalt)","var(--coral)","var(--green)","var(--purple)","var(--amber)","var(--rail)"];
+  function renderCalendar(){
+    var dayInfo={};
+    var sorted=trips.filter(function(t){return t.start&&t.end;}).sort(byStart);
+    sorted.forEach(function(t,i){
+      var col=CAL_PAL[i%CAL_PAL.length],d=parse(t.start),end=parse(t.end),guard=0;
+      while(d<=end&&guard<400){var iso=isoOf(d);if(!dayInfo[iso])dayInfo[iso]={color:col,label:(t.label||codeify(t.to)||"Trip")};d.setDate(d.getDate()+1);guard++;}
+    });
+    var now=new Date();now.setDate(1);now.setHours(0,0,0,0);
+    var html='<div class="cal-toggle">'+[3,6,12].map(function(m){return '<button class="cal-tab'+(m===calMonths?' active':'')+'" data-cal="'+m+'">'+m+' months</button>';}).join('')+'</div><div class="cal-grid">';
+    for(var mi=0;mi<calMonths;mi++)html+=monthCard(new Date(now.getFullYear(),now.getMonth()+mi,1),dayInfo);
+    html+='</div>';
+    var legend=sorted.map(function(t,i){
+      var col=CAL_PAL[i%CAL_PAL.length],route=(t.from?esc(codeify(t.from))+' → ':'')+esc(codeify(t.to));
+      return '<div class="cal-leg"><span class="sw" style="background:'+col+'"></span>'+route+'<span class="dt">'+fmtRange(t.start,t.end)+'</span></div>';
+    }).join('');
+    html+=legend?'<div class="cal-legend"><div class="cal-lh">Your trips - everything else is free</div>'+legend+'</div>':'<div class="empty-state" style="margin-top:18px"><div class="h">Nothing booked yet</div><p>Add a trip and the days you’re away light up across the months.</p></div>';
+    document.getElementById("list").innerHTML=html;
+    document.querySelectorAll(".cal-tab").forEach(function(b){b.onclick=function(){calMonths=+b.dataset.cal;render();};});
+  }
+  function monthCard(mDate,dayInfo){
+    var y=mDate.getFullYear(),m=mDate.getMonth();
+    var off=(new Date(y,m,1).getDay()+6)%7,daysIn=new Date(y,m+1,0).getDate(),todayIso=todayISO();
+    var dow=["Mo","Tu","We","Th","Fr","Sa","Su"].map(function(x){return '<div class="cal-dow">'+x+'</div>';}).join('');
+    var cells='';for(var i=0;i<off;i++)cells+='<div class="cal-d empty"></div>';
+    for(var dd=1;dd<=daysIn;dd++){
+      var iso=y+"-"+String(m+1).padStart(2,"0")+"-"+String(dd).padStart(2,"0"),info=dayInfo[iso];
+      var cls="cal-d"+(info?" trav":"")+(iso===todayIso?" today":"");
+      cells+='<div class="'+cls+'"'+(info?' style="--c:'+info.color+'" title="'+esc(info.label)+'"':'')+'>'+dd+'</div>';
+    }
+    return '<div class="cal-month"><div class="cal-mh">'+MON[m]+' '+y+'</div><div class="cal-days">'+dow+cells+'</div></div>';
+  }
+
   function render(){
     renderHero();
     renderStats();
-    document.getElementById("listTitle").textContent=tab==="upcoming"?"Upcoming":tab==="past"?"Past":"Wishlist";
+    document.getElementById("listTitle").textContent=tab==="upcoming"?"Upcoming":tab==="past"?"Past":tab==="wishlist"?"Wishlist":"Calendar";
+    document.getElementById("addBtn").style.display=tab==="calendar"?"none":"";
     document.getElementById("addBtn").textContent=tab==="wishlist"?"+ Add watch":"+ Add trip";
     var list=document.getElementById("list");
+    if(tab==="calendar"){renderCalendar();hydratePhotos();return;}
     if(tab==="wishlist"){list.innerHTML=wishes.length?wishes.map(wishCard).join(""):emptyState("Nothing on the wishlist","Add a watch like “Anywhere, 5 days, August” for a one-tap fare search.");hydratePhotos();return;}
     var up=trips.filter(isUpcoming).sort(byStart);
     var past=trips.filter(function(t){return!isUpcoming(t);}).sort(function(a,b){return a.start>b.start?-1:1;});
