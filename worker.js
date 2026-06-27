@@ -46,6 +46,23 @@ export default {
       await runSync(env);
       return cors(json({ ok: true }));
     }
+    // TEMP diagnostic: shows exactly what the DC API returns. Remove once sync works.
+    if (url.pathname === "/debug/dc" && request.method === "GET") {
+      try {
+        const res = await fetch(DC_BASE + "/trips", { headers: dcHeaders(env) });
+        const text = await res.text();
+        return cors(json({
+          dcKeyPresent: !!env.DC_API_KEY,
+          dcKeyPrefix: (env.DC_API_KEY || "").slice(0, 3),
+          requestedUrl: DC_BASE + "/trips",
+          status: res.status,
+          ok: res.ok,
+          bodyPreview: text.slice(0, 1500),
+        }));
+      } catch (e) {
+        return cors(json({ error: String((e && e.message) || e) }));
+      }
+    }
     return new Response("Not found", { status: 404 });
   },
 
