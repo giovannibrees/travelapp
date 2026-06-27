@@ -357,7 +357,7 @@ function norm(d) { return d ? String(d).slice(0, 10) : ""; }
 function addDay(iso) { const dt = new Date(iso + "T00:00:00Z"); dt.setUTCDate(dt.getUTCDate() + 1); return dt.toISOString().slice(0, 10); }
 function sig(t) { return [t.from, t.to, t.start, t.end].join("|").toLowerCase(); }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-function b64(s) { return decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/"))))); }
+function b64(s) { return decodeURIComponent(escape(atob(s.replace(/-/g, "+").replace(/_/g, "/")))); }
 
 async function loadStore(env) {
   const raw = await env.TRIPS.get("store");
