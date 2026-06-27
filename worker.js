@@ -16,6 +16,24 @@ export default {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
 
+    // --- Password gate. The password is set in-app and stored hashed in KV; no
+    // dashboard secret needed. Once set, /trips and /sync require the X-Auth token.
+    if (url.pathname === "/auth/status" && request.method === "GET") {
+      return cors(json({ set: !!(await env.TRIPS.get("auth")) }));
+    }
+    if (url.pathname === "/auth/login" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const pw = (body && body.password) || "";
+      if (!pw) return cors(json({ error: "missing password" }, 400));
+      const hash = await sha256(pw);
+      const stored = await env.TRIPS.get("auth");
+      if (!stored) { await env.TRIPS.put("auth", hash); return cors(json({ ok: true, token: hash })); }
+      if (hash === stored) return cors(json({ ok: true, token: hash }));
+      return cors(json({ error: "wrong password" }, 401));
+    }
+    const blocked = await authGuard(request, env);
+    if (blocked) return cors(blocked);
+
     // Your app reads the consolidated, segment-enriched trips from here.
     if (url.pathname === "/trips" && request.method === "GET") {
       const store = await loadStore(env);
@@ -367,7 +385,18 @@ async function loadStore(env) {
 }
 async function saveStore(env, store) { await env.TRIPS.put("store", JSON.stringify(store)); }
 
-function json(obj) { return new Response(JSON.stringify(obj), { headers: { "Content-Type": "application/json" } }); }
+async function sha256(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+// Returns a 401 Response if a password is set and the request lacks the right X-Auth, else null.
+async function authGuard(request, env) {
+  const stored = await env.TRIPS.get("auth");
+  if (!stored) return null;
+  return (request.headers.get("X-Auth") || "") === stored ? null : json({ error: "unauthorized" }, 401);
+}
+
+function json(obj, status) { return new Response(JSON.stringify(obj), { status: status || 200, headers: { "Content-Type": "application/json" } }); }
 function cors(res) {
   const h = new Headers(res.headers);
   h.set("Access-Control-Allow-Origin", "*");

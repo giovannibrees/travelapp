@@ -200,6 +200,16 @@
   .ig-side .btn{width:100%;justify-content:center;padding:14px;font-weight:700;margin-top:10px}
   .ig-side .btn:first-of-type{margin-top:0}
 
+  .auth-scrim{position:fixed;inset:0;background:var(--canvas);display:none;align-items:center;justify-content:center;padding:24px;z-index:90}
+  .auth-scrim.show{display:flex}
+  .auth-card{width:100%;max-width:360px;text-align:center;animation:riseIn .5s ease both}
+  .auth-mark{margin-bottom:14px}
+  .auth-card h2{font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.02em;margin:0 0 8px}
+  .auth-card p{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 20px}
+  .auth-card input{width:100%;font-family:var(--body);font-size:16px;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:14px 16px;outline:none;text-align:center}
+  .auth-card input:focus{border-color:var(--cobalt);background:#fff}
+  .auth-card .btn{width:100%;justify-content:center;padding:14px;font-weight:700;font-size:15px;margin-top:14px}
+  .auth-err{color:var(--coral);font-size:13px;min-height:16px;margin-top:8px}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--cream);font-size:13px;font-weight:500;padding:12px 20px;border-radius:999px;opacity:0;transition:.22s;z-index:80;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -261,6 +271,7 @@
 
 <div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
 <div class="share-scrim" id="shareScrim"><div id="shareInner" style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;justify-content:center"></div></div>
+<div class="auth-scrim" id="authScrim"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -284,7 +295,7 @@
     else{mem[key]=val;}
   }catch(e){console.error("save",e);}}
 
-  var trips=[], wishes=[], home="OPO", settings={workerUrl:""}, syncState="local";
+  var trips=[], wishes=[], home="OPO", settings={workerUrl:""}, syncState="local", authToken="";
   var tab="upcoming", openSet={};
 
   /* ===================== date / util helpers (preserved) ===================== */
@@ -660,10 +671,52 @@
     ensureIds();save("trips",trips);save("wishes",wishes);}
 
   /* ===================== worker sync (preserved) ===================== */
+  /* ===================== login (password gate, synced mode) ===================== */
+  function authHeaders(){ return authToken ? {"X-Auth":authToken} : {}; }
+  var authScrim=document.getElementById("authScrim");
+  function showAuth(mode){
+    return new Promise(function(resolve){
+      var create=mode==="create";
+      authScrim.innerHTML=
+        '<div class="auth-card"><div class="auth-mark">'+plane(30,"color:var(--coral)")+'</div>'+
+        '<h2>'+(create?"Set a password":"Welcome back")+'</h2>'+
+        '<p>'+(create?"This locks your trips to you. You’ll enter it once per device.":"Enter your password to unlock your travel hub.")+'</p>'+
+        '<input id="authInput" type="password" placeholder="Password" autocomplete="'+(create?"new-password":"current-password")+'">'+
+        '<div class="auth-err" id="authErr"></div>'+
+        '<button class="btn solid" id="authBtn">'+(create?"Set password":"Unlock")+'</button></div>';
+      authScrim.classList.add("show");
+      var input=document.getElementById("authInput"),btn=document.getElementById("authBtn"),err=document.getElementById("authErr");
+      setTimeout(function(){input.focus();},50);
+      async function submit(){
+        var pw=input.value;if(!pw){err.textContent="Enter a password";return;}
+        btn.disabled=true;err.textContent="";
+        try{
+          var res=await fetch(settings.workerUrl+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
+          if(res.ok){var d=await res.json();authToken=d.token;try{localStorage.setItem("travel:auth",authToken);}catch(e){}authScrim.classList.remove("show");resolve(true);return;}
+          err.textContent=create?"Could not set password":"Wrong password";
+        }catch(e){err.textContent="Network error - try again";}
+        btn.disabled=false;
+      }
+      btn.onclick=submit;
+      input.onkeydown=function(e){if(e.key==="Enter")submit();};
+    });
+  }
+  async function ensureAuth(){
+    if(!settings.workerUrl)return;
+    try{authToken=localStorage.getItem("travel:auth")||"";}catch(e){authToken="";}
+    var st;
+    try{st=await fetch(settings.workerUrl+"/auth/status");}catch(e){return;}
+    if(!st.ok)return;                                 // old worker without auth -> no gate
+    var d=await st.json();
+    if(!d.set){await showAuth("create");return;}      // first time: create a password
+    if(!authToken)await showAuth("login");            // password exists, this device has no token
+  }
+
   async function refresh(){
     if(!settings.workerUrl){syncState="local";updateStatusChip();render();return;}
     try{
-      var res=await fetch(settings.workerUrl+"/trips",{headers:{Accept:"application/json"}});
+      var res=await fetch(settings.workerUrl+"/trips",{headers:Object.assign({Accept:"application/json"},authHeaders())});
+      if(res.status===401){await showAuth("login");return refresh();}
       if(!res.ok)throw new Error("bad status");
       var data=await res.json();
       trips=(Array.isArray(data)?data:(data.trips||[])).map(function(t){return{id:t.id||uid(),dcId:t.dcId||null,from:t.from||"",to:t.to||"",start:norm(t.start),end:norm(t.end),label:t.label||"",notes:t.notes||"",segments:t.segments||[],calEventId:t.calEventId};});
@@ -675,7 +728,7 @@
   async function persistTrip(t,mode){
     await save("trips",trips);
     if(!settings.workerUrl)return;
-    try{await fetch(settings.workerUrl+"/trips",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(t)});}catch(e){}
+    try{await fetch(settings.workerUrl+"/trips",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify(t)});}catch(e){}
   }
   function updateStatusChip(){
     var el=document.getElementById("status");el.className="status "+(syncState==="synced"?"synced":syncState==="offline"?"offline":"local");
@@ -687,7 +740,7 @@
     if(!settings.workerUrl){toast("Local mode - set a worker URL in Settings to sync");return;}
     var b=document.getElementById("refreshBtn"),old=b?b.textContent:"";
     if(b){b.textContent="Syncing...";b.disabled=true;}
-    try{await fetch(settings.workerUrl+"/sync",{method:"POST"});}catch(e){}
+    try{await fetch(settings.workerUrl+"/sync",{method:"POST",headers:authHeaders()});}catch(e){}
     await refresh();
     if(b){b.disabled=false;b.textContent=old;}
     toast("Synced");
@@ -727,7 +780,9 @@
     ensureIds();
     updateStatusChip();
     if(settings.workerUrl){
-      render();await refresh();
+      render();
+      await ensureAuth();                 // password gate (synced mode)
+      await refresh();
       if(!trips.length)await syncNow();   // first open against an empty store: auto-pull from DC/Calendar
     }else{render();}
   })();
