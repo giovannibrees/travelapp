@@ -210,6 +210,7 @@
   .auth-card input:focus{border-color:var(--cobalt);background:#fff}
   .auth-card .btn{width:100%;justify-content:center;padding:14px;font-weight:700;font-size:15px;margin-top:14px}
   .auth-err{color:var(--coral);font-size:13px;min-height:16px;margin-top:8px}
+  .auth-foot{color:var(--faint);font-size:12px;margin-top:14px}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--cream);font-size:13px;font-weight:500;padding:12px 20px;border-radius:999px;opacity:0;transition:.22s;z-index:80;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -674,42 +675,57 @@
   /* ===================== login (password gate, synced mode) ===================== */
   function authHeaders(){ return authToken ? {"X-Auth":authToken} : {}; }
   var authScrim=document.getElementById("authScrim");
+  // Session token is kept for 30 days, then a fresh sign-in is asked for.
+  function saveAuth(token){ try{localStorage.setItem("travel:auth",JSON.stringify({token:token,exp:Date.now()+30*86400000}));}catch(e){} }
+  function loadAuth(){
+    try{
+      var raw=localStorage.getItem("travel:auth");if(!raw)return"";
+      var o=null;try{o=JSON.parse(raw);}catch(e){}
+      if(o&&o.token)return(o.exp&&o.exp<Date.now())?"":o.token;   // expired -> require sign-in
+      return raw;                                                  // legacy plain token
+    }catch(e){return"";}
+  }
   function showAuth(mode){
     return new Promise(function(resolve){
       var create=mode==="create";
       authScrim.innerHTML=
         '<div class="auth-card"><div class="auth-mark">'+plane(30,"color:var(--coral)")+'</div>'+
-        '<h2>'+(create?"Set a password":"Welcome back")+'</h2>'+
-        '<p>'+(create?"This locks your trips to you. You’ll enter it once per device.":"Enter your password to unlock your travel hub.")+'</p>'+
-        '<input id="authInput" type="password" placeholder="Password" autocomplete="'+(create?"new-password":"current-password")+'">'+
+        '<h2>'+(create?"Set up your hub":"Welcome back")+'</h2>'+
+        '<p>'+(create?"Create your login - email and a password. You’ll use it on each device.":"Sign in to unlock your travel hub.")+'</p>'+
+        '<input id="authEmail" type="email" placeholder="Email" autocomplete="email" inputmode="email">'+
+        '<input id="authInput" type="password" placeholder="Password" autocomplete="'+(create?"new-password":"current-password")+'" style="margin-top:10px">'+
         '<div class="auth-err" id="authErr"></div>'+
-        '<button class="btn solid" id="authBtn">'+(create?"Set password":"Unlock")+'</button></div>';
+        '<button class="btn solid" id="authBtn">'+(create?"Create login":"Sign in")+'</button>'+
+        '<div class="auth-foot">Stays signed in for 30 days on this device.</div></div>';
       authScrim.classList.add("show");
-      var input=document.getElementById("authInput"),btn=document.getElementById("authBtn"),err=document.getElementById("authErr");
-      setTimeout(function(){input.focus();},50);
+      var email=document.getElementById("authEmail"),input=document.getElementById("authInput"),btn=document.getElementById("authBtn"),err=document.getElementById("authErr");
+      setTimeout(function(){email.focus();},50);
       async function submit(){
-        var pw=input.value;if(!pw){err.textContent="Enter a password";return;}
+        var em=email.value.trim(),pw=input.value;
+        if(!em){err.textContent="Enter your email";return;}
+        if(!pw){err.textContent="Enter a password";return;}
         btn.disabled=true;err.textContent="";
         try{
-          var res=await fetch(settings.workerUrl+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pw})});
-          if(res.ok){var d=await res.json();authToken=d.token;try{localStorage.setItem("travel:auth",authToken);}catch(e){}authScrim.classList.remove("show");resolve(true);return;}
-          err.textContent=create?"Could not set password":"Wrong password";
+          var res=await fetch(settings.workerUrl+"/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em,password:pw})});
+          if(res.ok){var d=await res.json();authToken=d.token;saveAuth(authToken);authScrim.classList.remove("show");resolve(true);return;}
+          err.textContent=create?"Could not set up - try again":"Wrong email or password";
         }catch(e){err.textContent="Network error - try again";}
         btn.disabled=false;
       }
       btn.onclick=submit;
+      email.onkeydown=function(e){if(e.key==="Enter")input.focus();};
       input.onkeydown=function(e){if(e.key==="Enter")submit();};
     });
   }
   async function ensureAuth(){
     if(!settings.workerUrl)return;
-    try{authToken=localStorage.getItem("travel:auth")||"";}catch(e){authToken="";}
+    authToken=loadAuth();
     var st;
     try{st=await fetch(settings.workerUrl+"/auth/status");}catch(e){return;}
     if(!st.ok)return;                                 // old worker without auth -> no gate
     var d=await st.json();
-    if(!d.set){await showAuth("create");return;}      // first time: create a password
-    if(!authToken)await showAuth("login");            // password exists, this device has no token
+    if(!d.set){await showAuth("create");return;}      // first time: set up email + password
+    if(!authToken)await showAuth("login");            // exists, but this device has no (valid) token
   }
 
   async function refresh(){

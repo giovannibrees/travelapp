@@ -24,12 +24,20 @@ export default {
     if (url.pathname === "/auth/login" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       const pw = (body && body.password) || "";
-      if (!pw) return cors(json({ error: "missing password" }, 400));
+      const email = ((body && body.email) || "").trim().toLowerCase();
+      if (!pw || !email) return cors(json({ error: "email and password required" }, 400));
       const hash = await sha256(pw);
-      const stored = await env.TRIPS.get("auth");
-      if (!stored) { await env.TRIPS.put("auth", hash); return cors(json({ ok: true, token: hash })); }
-      if (hash === stored) return cors(json({ ok: true, token: hash }));
-      return cors(json({ error: "wrong password" }, 401));
+      const storedHash = await env.TRIPS.get("auth");
+      const storedEmail = await env.TRIPS.get("auth_email");
+      if (!storedHash) {                                       // first-time setup
+        await env.TRIPS.put("auth", hash);
+        await env.TRIPS.put("auth_email", email);
+        return cors(json({ ok: true, token: hash }));
+      }
+      if (hash !== storedHash) return cors(json({ error: "wrong email or password" }, 401));
+      if (!storedEmail) { await env.TRIPS.put("auth_email", email); } // migrate a password-only setup
+      else if (storedEmail !== email) return cors(json({ error: "wrong email or password" }, 401));
+      return cors(json({ ok: true, token: hash }));
     }
     const blocked = await authGuard(request, env);
     if (blocked) return cors(blocked);
