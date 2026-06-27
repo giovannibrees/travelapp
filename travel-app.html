@@ -165,6 +165,15 @@
   .yr-n{font-family:var(--mono);font-size:12px;color:var(--muted)}
   .yr-bar{height:8px;background:var(--soft);border:1px solid var(--line);border-radius:999px;overflow:hidden}
   .yr-bar span{display:block;height:100%;background:var(--cobalt);border-radius:999px}
+  .yr-top{cursor:pointer;user-select:none}
+  .yr-caret{display:inline-block;font-size:11px;color:var(--faint);transition:transform .15s ease}
+  .yr.open .yr-caret{transform:rotate(90deg)}
+  .yr-detail{display:none;margin-top:8px}
+  .yr.open .yr-detail{display:block}
+  .yr-trip{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-top:1px solid var(--line)}
+  .yr-tr{color:var(--ink);font-weight:600}
+  .yr-td{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .yr-hint{font-family:var(--body);text-transform:none;letter-spacing:0;color:var(--faint);font-size:11px}
   .addplan:hover{background:rgba(30,64,255,.16)}
 
   /* wishlist */
@@ -641,17 +650,27 @@
     var html='<div class="cal-toggle">'+[3,6,12].map(function(m){return '<button class="cal-tab'+(m===calMonths?' active':'')+'" data-cal="'+m+'">'+m+' months</button>';}).join('')+'</div><div class="cal-grid">';
     for(var mi=0;mi<calMonths;mi++)html+=monthCard(new Date(now.getFullYear(),now.getMonth()+mi,1),dayInfo);
     html+='</div>';
-    // days away per calendar year (Jan 1 -> Dec 31), each day counted once even across overlapping trips
+    // days away per calendar year (Jan 1 -> Dec 31). Header counts each calendar
+    // day once (overlaps deduped); tap a year to see exactly which trips and dates
+    // make it up - so a wrong stored date shows itself immediately.
     var dayset={};
     trips.forEach(function(t){if(!t.start||!t.end)return;var d=parse(t.start),end=parse(t.end),guard=0;while(d<=end&&guard<800){dayset[isoOf(d)]=1;d.setDate(d.getDate()+1);guard++;}});
     var yearCount={};Object.keys(dayset).forEach(function(iso){var y=iso.slice(0,4);yearCount[y]=(yearCount[y]||0)+1;});
     var years=Object.keys(yearCount).sort().reverse();
     if(years.length){
       var maxY=Math.max.apply(null,years.map(function(y){return yearCount[y];}));
-      var yhtml=years.map(function(y){var n=yearCount[y],pct=Math.max(4,Math.round(n/maxY*100));
-        return '<div class="yr"><div class="yr-top"><span class="yr-y">'+y+'</span><span class="yr-n">'+n+' day'+(n===1?'':'s')+' away</span></div><div class="yr-bar"><span style="width:'+pct+'%"></span></div></div>';
+      var clipYear=function(t,y){var ys=y+"-01-01",ye=y+"-12-31";var s=t.start<ys?ys:t.start,e=t.end>ye?ye:t.end;if(s>e)return null;return{s:s,e:e,days:dayDiff(s,e)+1};};
+      var yhtml=years.map(function(y){
+        var n=yearCount[y],pct=Math.max(4,Math.round(n/maxY*100));
+        var parts=trips.filter(function(t){return t.start&&t.end;}).map(function(t){return{t:t,c:clipYear(t,y)};}).filter(function(x){return x.c;}).sort(function(a,b){return a.c.s<b.c.s?-1:1;});
+        var rows=parts.map(function(x){
+          var route=(x.t.from?esc(codeify(x.t.from))+' → ':'')+esc(codeify(x.t.to));
+          var spans=x.t.start<y+"-01-01"||x.t.end>y+"-12-31";
+          return '<div class="yr-trip"><span class="yr-tr">'+route+'</span><span class="yr-td">'+fmtRange(x.t.start,x.t.end)+' · '+x.c.days+'d'+(spans?' in '+y:'')+'</span></div>';
+        }).join('');
+        return '<div class="yr"><div class="yr-top" data-yr="'+y+'"><span class="yr-y">'+y+' <span class="yr-caret">▸</span></span><span class="yr-n">'+n+' day'+(n===1?'':'s')+' away</span></div><div class="yr-bar"><span style="width:'+pct+'%"></span></div><div class="yr-detail">'+(rows||'<div class="yr-trip"><span class="yr-tr">No trips</span></div>')+'</div></div>';
       }).join('');
-      html+='<div class="yr-wrap"><div class="yr-lh">Days away by year</div>'+yhtml+'</div>';
+      html+='<div class="yr-wrap"><div class="yr-lh">Days away by year <span class="yr-hint">— tap a year for the breakdown</span></div>'+yhtml+'</div>';
     }
     var legend=sorted.map(function(t,i){
       var col=CAL_PAL[i%CAL_PAL.length],route=(t.from?esc(codeify(t.from))+' → ':'')+esc(codeify(t.to));
@@ -660,6 +679,7 @@
     html+=legend?'<div class="cal-legend"><div class="cal-lh">Your Trips</div>'+legend+'</div>':'<div class="empty-state" style="margin-top:18px"><div class="h">Nothing booked yet</div><p>Add a trip and the days you’re away light up across the months.</p></div>';
     document.getElementById("list").innerHTML=html;
     document.querySelectorAll(".cal-tab").forEach(function(b){b.onclick=function(){calMonths=+b.dataset.cal;render();};});
+    document.querySelectorAll(".yr-top").forEach(function(b){b.onclick=function(){b.parentNode.classList.toggle("open");};});
   }
   function monthCard(mDate,dayInfo){
     var y=mDate.getFullYear(),m=mDate.getMonth();
