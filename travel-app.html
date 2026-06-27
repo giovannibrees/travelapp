@@ -11,6 +11,9 @@
 <meta name="apple-mobile-web-app-title" content="Travel">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-192.png">
+<link rel="shortcut icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -771,7 +774,7 @@
     if(location.protocol.indexOf("http")!==0)return;  // file:// -> stay local
     try{
       var c=new AbortController(),to=setTimeout(function(){c.abort();},4000);
-      var res=await fetch(location.origin+"/trips",{headers:{Accept:"application/json"},signal:c.signal});
+      var res=await fetch(location.origin+"/auth/status",{signal:c.signal});  // unauthenticated worker check
       clearTimeout(to);
       if(res.ok)settings.workerUrl=location.origin;   // not persisted: always reflects where it is served
     }catch(e){}
