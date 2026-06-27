@@ -183,13 +183,9 @@ async function pullFromDC(store, env) {
     let local = Object.values(store.trips).find((t) => t.dcId === dcId);
     if (!local) local = Object.values(store.trips).find((t) => !t.dcId && sig(t) === sig(mapped));
     if (local) {
+      // The app OWNS a linked trip. NEVER overwrite its dates from DC - that is
+      // exactly what was reverting your edits. You edit in the app; it pushes up.
       local.dcId = dcId;
-      // Last-writer-wins: adopt DC's version only if DC changed more recently than
-      // your local edit. Stops DC from reverting a date you just changed in the app.
-      if (dcUpdated > (local.updatedAt || 0)) {
-        for (const k of ["to", "start", "end", "label"]) if (mapped[k]) local[k] = mapped[k];
-        local.updatedAt = dcUpdated;
-      }
       local.dcUpdatedAt = dcUpdated;
     } else {
       const id = uid();
