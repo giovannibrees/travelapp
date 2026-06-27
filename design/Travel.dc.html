@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #ECE7DC; }
+  ::selection { background: #FF5A35; color: #fff; }
+  input, textarea, select, button { font-family: inherit; }
+  input::placeholder, textarea::placeholder { color: #A39A89; }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes floatPlane { 0%,100% { transform: translate(0,0) rotate(0deg); } 50% { transform: translate(6px,-6px) rotate(-4deg); } }
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes sheetIn { from { opacity: 0; transform: translateY(24px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes dashFlow { to { background-position: -16px 0; } }
+
+  @media (max-width: 760px) {
+    .m-root { padding: 22px 16px 56px !important; }
+    .m-header { flex-direction: column; align-items: flex-start; gap: 18px; }
+    .m-actions { flex-wrap: wrap; }
+    .m-hero { grid-template-columns: 1fr !important; min-height: 0 !important; margin-top: 24px !important; }
+    .m-hero-text { padding: 26px 24px !important; }
+    .m-hero-photo { height: 180px; order: -1; }
+    .m-hero-fade { background: linear-gradient(0deg, #16130C 2%, rgba(22,19,12,.12) 55%, transparent 100%) !important; }
+    .m-stats { grid-template-columns: repeat(2, 1fr) !important; }
+    .m-tabs { width: 100% !important; justify-content: space-between; }
+    .m-tabs button { flex: 1 1 0; justify-content: center; }
+    .m-trip-head { grid-template-columns: 1fr !important; }
+    .m-trip-photo { height: 170px !important; min-height: 0 !important; }
+    .m-plan { grid-template-columns: 22px 1fr !important; row-gap: 6px; }
+    .m-plan-meta { grid-column: 1 / -1; justify-content: flex-start !important; padding-left: 34px; flex-wrap: wrap; }
+    .m-share-wrap { flex-direction: column; align-items: center; gap: 16px !important; padding: 16px !important; }
+    .m-share-card { width: min(92vw, 432px) !important; height: auto !important; aspect-ratio: 4 / 5; }
+    .m-share-side { width: min(92vw, 432px) !important; }
+    .m-modal { padding: 24px 20px !important; }
+    .m-fieldgrid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</helmet>
+<div class="m-root" style="--canvas:#ECE7DC; --ink:#16130C; --muted:#756D5E; --faint:#A39A89; --line:rgba(22,19,12,.12); --card:#FFFFFF; --cobalt:#1E40FF; --coral:#FF5A35; --amber:#E89A2B; --green:#1B8A57; --purple:#7C4DFF; --display:'Bricolage Grotesque',sans-serif; --body:'Archivo',sans-serif; --mono:'JetBrains Mono',monospace; font-family: var(--body); color: var(--ink); background: var(--canvas); min-height: 100vh; padding: 40px clamp(20px,5vw,72px) 80px; -webkit-font-smoothing: antialiased;">
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="m-header" style="max-width: 1140px; margin: 0 auto; display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; animation: riseIn .6s ease both;">
+    <div>
+      <h1 style="font-family: var(--display); font-weight: 800; font-size: clamp(54px, 9vw, 104px); line-height: .82; letter-spacing: -.035em; margin: 0 0 12px;">Travel</h1>
+      <p style="font-size: 16px; color: var(--muted); margin: 0; max-width: 440px; line-height: 1.45;">Every trip - its flights, stays and rides - on one living timeline.</p>
+    </div>
+    <div class="m-actions" style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+      <span style="font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--green); background: rgba(27,138,87,.1); border: 1px solid rgba(27,138,87,.28); padding: 7px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;"></span>LOCAL</span>
+      <button style="font-family: var(--body); font-weight: 600; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 9px 18px; border-radius: 999px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;" style-hover="box-shadow: 0 6px 18px rgba(22,19,12,.1); transform: translateY(-1px);" onClick="{{ openShare }}">Share</button>
+      <button style="font-family: var(--body); font-weight: 600; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 9px 18px; border-radius: 999px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;" style-hover="box-shadow: 0 6px 18px rgba(22,19,12,.1); transform: translateY(-1px);">Settings</button>
+    </div>
+  </header>
+
+  <!-- ===== HERO: NEXT TRIP ===== -->
+  <section class="m-hero" style="max-width: 1140px; margin: 34px auto 0; border-radius: 28px; overflow: hidden; background: var(--ink); color: #F4EFE4; display: grid; grid-template-columns: 1.25fr 1fr; min-height: 320px; box-shadow: 0 30px 60px -28px rgba(22,19,12,.55); animation: riseIn .7s ease .08s both;">
+    <div class="m-hero-text" style="padding: 36px 40px; display: flex; flex-direction: column; position: relative;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: auto;">
+        <span style="font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .2em; background: var(--coral); color: #fff; padding: 6px 12px; border-radius: 999px;">NEXT TRIP</span>
+        <span style="font-family: var(--mono); font-size: 12px; letter-spacing: .12em; color: rgba(244,239,228,.6);">15-18 SEP 2026</span>
+      </div>
+
+      <div style="display: flex; align-items: baseline; gap: 18px; margin: 28px 0 4px;">
+        <span style="font-family: var(--display); font-weight: 800; font-size: clamp(80px,12vw,128px); line-height: .8; letter-spacing: -.04em;">80</span>
+        <div style="padding-bottom: 10px;">
+          <div style="font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1;">days to</div>
+          <div style="font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.1; color: var(--coral);">Funchal</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px; margin: 18px 0 26px;">
+        <span style="font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -.02em;">OPO</span>
+        <span style="flex: 1; height: 2px; background-image: linear-gradient(90deg, rgba(244,239,228,.5) 50%, transparent 50%); background-size: 14px 2px; animation: dashFlow 1s linear infinite;"></span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="animation: floatPlane 3s ease-in-out infinite; color: var(--coral);"><path d="M2 11.5 21.5 3l-8.2 18.5-2.2-7.6-9.1-2.4Z" fill="currentColor"/></svg>
+        <span style="font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -.02em;">FNC</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button onClick="{{ openTrip }}" style="font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--ink); background: #F4EFE4; border: none; padding: 13px 24px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: transform .15s ease;" style-hover="transform: translateY(-2px);">Open itinerary <span style="font-size: 17px;">&rarr;</span></button>
+        <span style="font-family: var(--body); color: rgba(244,239,228,.65); font-size: 14px;">Build Days - Madeira · 4 days</span>
+      </div>
+    </div>
+
+    <div class="m-hero-photo" style="position: relative;">
+      <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Panorama_of_Funchal.jpg?width=1200" alt="Funchal, Madeira" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+      <div class="m-hero-fade" style="position: absolute; inset: 0; background: linear-gradient(90deg, var(--ink) 0%, rgba(22,19,12,.35) 35%, transparent 70%); pointer-events: none;"></div>
+    </div>
+  </section>
+
+  <!-- ===== STATS ===== -->
+  <section class="m-stats" style="max-width: 1140px; margin: 16px auto 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; animation: riseIn .7s ease .14s both;">
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 24px;">
+      <div style="font-family: var(--display); font-weight: 800; font-size: 44px; line-height: .9; letter-spacing: -.03em;">1</div>
+      <div style="font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 8px;">Trips logged</div>
+    </div>
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 24px;">
+      <div style="font-family: var(--display); font-weight: 800; font-size: 44px; line-height: .9; letter-spacing: -.03em; color: var(--cobalt);">1</div>
+      <div style="font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 8px;">Upcoming</div>
+    </div>
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 24px;">
+      <div style="font-family: var(--display); font-weight: 800; font-size: 44px; line-height: .9; letter-spacing: -.03em;">4</div>
+      <div style="font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 8px;">Days travelling</div>
+    </div>
+    <div style="background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px 24px;">
+      <div style="font-family: var(--display); font-weight: 800; font-size: 44px; line-height: .9; letter-spacing: -.03em; color: var(--coral);">80</div>
+      <div style="font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 8px;">Days to go</div>
+    </div>
+  </section>
+
+  <!-- ===== TABS ===== -->
+  <nav class="m-tabs" style="max-width: 1140px; margin: 30px auto 0; display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px; width: fit-content;">
+    <button onClick="{{ goUpcoming }}" style="{{ tabUpcoming }}">Upcoming <span style="opacity:.55; font-family: var(--mono); font-size: 12px;">1</span></button>
+    <button onClick="{{ goPast }}" style="{{ tabPast }}">Past <span style="opacity:.55; font-family: var(--mono); font-size: 12px;">0</span></button>
+    <button onClick="{{ goWishlist }}" style="{{ tabWishlist }}">Wishlist <span style="opacity:.55; font-family: var(--mono); font-size: 12px;">1</span></button>
+  </nav>
+
+  <!-- ===== UPCOMING PANEL ===== -->
+  <sc-if value="{{ isUpcoming }}" hint-placeholder-val="{{ true }}">
+  <section style="max-width: 1140px; margin: 22px auto 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div style="font-family: var(--mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);">Upcoming</div>
+      <button onClick="{{ openTrip }}" style="font-family: var(--body); font-weight: 700; font-size: 13px; color: var(--cobalt); background: rgba(30,64,255,.08); border: none; padding: 9px 16px; border-radius: 999px; cursor: pointer; transition: background .15s ease;" style-hover="background: rgba(30,64,255,.16);">+ Add trip</button>
+    </div>
+
+    <article style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; overflow: hidden; box-shadow: 0 18px 40px -32px rgba(22,19,12,.5);">
+      <!-- card header with photo strip -->
+      <div class="m-trip-head" style="display: grid; grid-template-columns: 200px 1fr;">
+        <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Panorama_of_Funchal.jpg?width=600" alt="Funchal" class="m-trip-photo" style="width: 100%; height: 100%; min-height: 168px; object-fit: cover;">
+        <div style="padding: 24px 26px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+                <span style="font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -.02em;">OPO</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color: var(--cobalt);"><path d="M2 11.5 21.5 3l-8.2 18.5-2.2-7.6-9.1-2.4Z" fill="currentColor"/></svg>
+                <span style="font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -.02em;">FNC</span>
+              </div>
+              <h3 style="font-family: var(--display); font-weight: 700; font-size: 20px; margin: 0 0 12px;">Build Days - Madeira</h3>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span style="font-family: var(--mono); font-size: 13px; color: var(--muted);">15-18 Sep 2026</span>
+                <span style="font-family: var(--mono); font-size: 11px; font-weight: 700; background: var(--ink); color: #F4EFE4; padding: 5px 10px; border-radius: 999px;">4 DAYS</span>
+                <span style="font-family: var(--mono); font-size: 11px; font-weight: 700; background: rgba(30,64,255,.1); color: var(--cobalt); padding: 5px 10px; border-radius: 999px;">IN 80 DAYS</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
+              <button onClick="{{ openEditTrip }}" style="font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 8px 16px; border-radius: 999px; cursor: pointer;" style-hover="background: #F6F2E9;">Edit</button>
+              <button style="font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--coral); background: var(--card); border: 1px solid rgba(255,90,53,.3); padding: 8px 16px; border-radius: 999px; cursor: pointer;" style-hover="background: rgba(255,90,53,.08);">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- toggle bar -->
+      <button onClick="{{ toggleExpand }}" style="width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 14px 26px; background: #F8F5EE; border: none; border-top: 1px solid var(--line); cursor: pointer;">
+        <span style="display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: var(--muted);">
+          <span style="width:8px;height:8px;border-radius:2px;background:var(--cobalt);"></span>
+          <span style="width:8px;height:8px;border-radius:2px;background:var(--green);"></span>
+          <span style="width:8px;height:8px;border-radius:2px;background:var(--purple);"></span>
+          ITINERARY
+        </span>
+        <span style="font-family: var(--body); font-size: 13px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px;">{{ expandLabel }} <span style="font-size: 11px;">{{ expandCaret }}</span></span>
+      </button>
+
+      <!-- plan timeline -->
+      <sc-if value="{{ expanded }}" hint-placeholder-val="{{ true }}">
+      <div style="padding: 8px 26px 22px;">
+        <sc-for list="{{ plans }}" as="p" hint-placeholder-count="4">
+          <div class="m-plan" style="display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line);">
+            <div style="position: relative; display: flex; justify-content: center;">
+              <span style="width: 14px; height: 14px; border-radius: 50%; background: {{ p.color }}; box-shadow: 0 0 0 4px var(--card), 0 0 0 5px {{ p.color }};"></span>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span style="font-family: var(--display); font-weight: 700; font-size: 16px;">{{ p.title }}</span>
+                <span style="font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; color: {{ p.color }}; background: {{ p.tint }}; padding: 3px 8px; border-radius: 999px;">{{ p.type }}</span>
+              </div>
+              <div style="font-size: 13px; color: var(--muted); margin-top: 3px;">{{ p.sub }}</div>
+            </div>
+            <div class="m-plan-meta" style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-family: var(--mono); font-size: 13px; color: var(--ink); white-space: nowrap;">{{ p.date }}</span>
+              <button onClick="{{ openEditTrip }}" style="font-family: var(--body); font-weight: 600; font-size: 12px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px; cursor: pointer;" style-hover="background:#F6F2E9;">Edit</button>
+              <button style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;" style-hover="color: var(--coral); border-color: rgba(255,90,53,.35);">&times;</button>
+            </div>
+          </div>
+        </sc-for>
+        <button style="margin-top: 16px; font-family: var(--body); font-weight: 700; font-size: 13px; color: var(--cobalt); background: rgba(30,64,255,.08); border: none; padding: 10px 18px; border-radius: 999px; cursor: pointer;" style-hover="background: rgba(30,64,255,.16);">+ Add plan</button>
+      </div>
+      </sc-if>
+    </article>
+  </section>
+  </sc-if>
+
+  <!-- ===== PAST PANEL ===== -->
+  <sc-if value="{{ isPast }}" hint-placeholder-val="{{ false }}">
+  <section style="max-width: 1140px; margin: 22px auto 0;">
+    <div style="font-family: var(--mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px;">Past</div>
+    <div style="background: var(--card); border: 1px dashed var(--line); border-radius: 24px; padding: 64px 24px; text-align: center;">
+      <div style="font-family: var(--display); font-weight: 700; font-size: 22px; margin-bottom: 8px;">No memories yet</div>
+      <p style="color: var(--muted); margin: 0 auto; max-width: 360px; line-height: 1.5;">When a trip wraps, it slides here with its photos, receipts and the route you actually flew.</p>
+    </div>
+  </section>
+  </sc-if>
+
+  <!-- ===== WISHLIST PANEL ===== -->
+  <sc-if value="{{ isWishlist }}" hint-placeholder-val="{{ false }}">
+  <section style="max-width: 1140px; margin: 22px auto 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+      <div style="font-family: var(--mono); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted);">Wishlist</div>
+      <button onClick="{{ openAddWatch }}" style="font-family: var(--body); font-weight: 700; font-size: 13px; color: var(--cobalt); background: rgba(30,64,255,.08); border: none; padding: 9px 16px; border-radius: 999px; cursor: pointer;" style-hover="background: rgba(30,64,255,.16);">+ Add watch</button>
+    </div>
+    <article style="background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 26px 28px; box-shadow: 0 18px 40px -32px rgba(22,19,12,.5);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+        <div>
+          <h3 style="font-family: var(--display); font-weight: 800; font-size: 26px; margin: 0 0 14px; letter-spacing: -.02em;">Anywhere</h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+            <span style="font-family: var(--mono); font-size: 12px; background: #F4F0E7; border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px;">~<b style="color:var(--cobalt)">5</b> days</span>
+            <span style="font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--cobalt); background: rgba(30,64,255,.08); padding: 6px 12px; border-radius: 999px;">August</span>
+            <span style="font-family: var(--mono); font-size: 12px; background: #F4F0E7; border: 1px solid var(--line); padding: 6px 12px; border-radius: 999px;">under <b style="color:var(--cobalt)">€400</b></span>
+          </div>
+          <p style="color: var(--muted); margin: 0; line-height: 1.5; max-width: 460px;">Anywhere warm, flexible dates, direct if possible.</p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+          <button onClick="{{ openAddWatch }}" style="font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 8px 16px; border-radius: 999px; cursor: pointer;" style-hover="background:#F6F2E9;">Edit</button>
+          <button style="font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--coral); background: var(--card); border: 1px solid rgba(255,90,53,.3); padding: 8px 16px; border-radius: 999px; cursor: pointer;" style-hover="background: rgba(255,90,53,.08);">Delete</button>
+        </div>
+      </div>
+      <button style="margin-top: 20px; font-family: var(--body); font-weight: 700; font-size: 14px; color: #F4EFE4; background: var(--ink); border: none; padding: 12px 22px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 9px; transition: transform .15s ease;" style-hover="transform: translateY(-2px);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color: var(--coral);"><path d="M2 11.5 21.5 3l-8.2 18.5-2.2-7.6-9.1-2.4Z" fill="currentColor"/></svg>
+        Watch fares from OPO
+      </button>
+    </article>
+  </section>
+  </sc-if>
+
+  <!-- ===== EDIT TRIP MODAL ===== -->
+  <sc-if value="{{ editTripOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeEditTrip }}" style="position: fixed; inset: 0; background: rgba(22,19,12,.5); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 50; animation: overlayIn .2s ease both;">
+    <div onClick="{{ stop }}" class="m-modal" style="width: 100%; max-width: 560px; background: var(--card); border-radius: 26px; padding: 32px 34px; box-shadow: 0 40px 90px -30px rgba(0,0,0,.6); animation: sheetIn .28s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .22em; color: var(--ink); margin-bottom: 24px;">EDIT TRIP</div>
+      <div class="m-fieldgrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px;">
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">From</span><input value="OPO" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">To</span><input value="FNC" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Departure</span><input type="date" value="2026-09-15" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:12px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Return</span><input type="date" value="2026-09-18" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:12px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+        <label style="display: block; grid-column: 1 / -1;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Label <span style="color:var(--faint); font-weight:400;">(optional)</span></span><input value="Build Days - Madeira" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+      </div>
+      <div style="display: flex; gap: 12px; margin-top: 28px;">
+        <button onClick="{{ closeEditTrip }}" style="flex:1; font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--ink); padding: 14px; border-radius: 999px; cursor: pointer;" style-hover="background:#F6F2E9;">Cancel</button>
+        <button onClick="{{ closeEditTrip }}" style="flex:1.4; font-family: var(--body); font-weight: 700; font-size: 15px; color: #F4EFE4; background: var(--ink); border: none; padding: 14px; border-radius: 999px; cursor: pointer; transition: transform .15s ease;" style-hover="transform: translateY(-2px);">Save trip</button>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===== ADD WATCH MODAL ===== -->
+  <sc-if value="{{ addWatchOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeAddWatch }}" style="position: fixed; inset: 0; background: rgba(22,19,12,.5); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 50; animation: overlayIn .2s ease both;">
+    <div onClick="{{ stop }}" class="m-modal" style="width: 100%; max-width: 560px; background: var(--card); border-radius: 26px; padding: 32px 34px; box-shadow: 0 40px 90px -30px rgba(0,0,0,.6); animation: sheetIn .28s cubic-bezier(.2,.8,.2,1) both;">
+      <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .22em; color: var(--ink); margin-bottom: 24px;">ADD A WATCH</div>
+      <label style="display: block; margin-bottom: 18px;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Destination <span style="color:var(--faint); font-weight:400;">(blank = anywhere)</span></span><input placeholder="Anywhere warm" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+      <div class="m-fieldgrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; margin-bottom: 18px;">
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Ideal length (days)</span><input placeholder="5" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+        <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Window</span><select style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none; cursor:pointer;" style-focus="border-color: var(--cobalt); background: #fff;"><option>Any month</option><option>August</option><option>Shoulder season</option></select></label>
+      </div>
+      <label style="display: block; margin-bottom: 18px;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Max price <span style="color:var(--faint); font-weight:400;">(optional)</span></span><input placeholder="€400" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none;" style-focus="border-color: var(--cobalt); background: #fff;"></label>
+      <label style="display: block;"><span style="display:block; font-weight:600; font-size:13px; color:var(--muted); margin-bottom:7px;">Notes</span><textarea placeholder="Direct flights, flexible dates…" rows="3" style="width:100%; font-size:16px; color:var(--ink); background:#F6F2E9; border:1px solid var(--line); border-radius:14px; padding:13px 15px; outline:none; resize:vertical; font-family:var(--body);" style-focus="border-color: var(--cobalt); background: #fff;"></textarea></label>
+      <div style="display: flex; gap: 12px; margin-top: 28px;">
+        <button onClick="{{ closeAddWatch }}" style="flex:1; font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--ink); padding: 14px; border-radius: 999px; cursor: pointer;" style-hover="background:#F6F2E9;">Cancel</button>
+        <button onClick="{{ closeAddWatch }}" style="flex:1.4; font-family: var(--body); font-weight: 700; font-size: 15px; color: #F4EFE4; background: var(--ink); border: none; padding: 14px; border-radius: 999px; cursor: pointer; transition: transform .15s ease;" style-hover="transform: translateY(-2px);">Add watch</button>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- ===== SHARE / INSTAGRAM OVERVIEW ===== -->
+  <sc-if value="{{ shareOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeShare }}" class="m-share-wrap" style="position: fixed; inset: 0; background: rgba(22,19,12,.6); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; gap: 24px; padding: 24px; z-index: 60; overflow: auto; animation: overlayIn .2s ease both;">
+
+    <!-- the screenshot-able card, 4:5 -->
+    <div onClick="{{ stop }}" class="m-share-card" style="width: 432px; height: 540px; flex-shrink: 0; background: var(--ink); color: #F4EFE4; border-radius: 26px; padding: 34px 34px 28px; display: flex; flex-direction: column; box-shadow: 0 40px 90px -30px rgba(0,0,0,.7); animation: sheetIn .3s cubic-bezier(.2,.8,.2,1) both; overflow: hidden;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="font-family: var(--display); font-weight: 800; font-size: 40px; line-height: .9; letter-spacing: -.03em; margin-top: 6px;">2026<br>Travel log</div>
+        </div>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="color: var(--coral); margin-top: 4px;"><path d="M2 11.5 21.5 3l-8.2 18.5-2.2-7.6-9.1-2.4Z" fill="currentColor"/></svg>
+      </div>
+
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; margin-top: 22px;">
+        <sc-for list="{{ trips }}" as="t" hint-placeholder-count="1">
+          <div style="display: grid; grid-template-columns: 76px 1fr auto; gap: 14px; align-items: center; background: rgba(244,239,228,.06); border: 1px solid rgba(244,239,228,.1); border-radius: 18px; padding: 12px;">
+            <img src="{{ t.photo }}" alt="{{ t.city }}" style="width: 76px; height: 76px; border-radius: 14px; object-fit: cover;">
+            <div style="min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-family: var(--display); font-weight: 800; font-size: 17px;">{{ t.from }}</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="color: var(--coral); flex-shrink:0;"><path d="M2 11.5 21.5 3l-8.2 18.5-2.2-7.6-9.1-2.4Z" fill="currentColor"/></svg>
+                <span style="font-family: var(--display); font-weight: 800; font-size: 17px;">{{ t.to }}</span>
+              </div>
+              <div style="font-family: var(--body); font-weight: 600; font-size: 14px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ t.label }}</div>
+              <div style="font-family: var(--mono); font-size: 11px; color: rgba(244,239,228,.6); margin-top: 2px;">{{ t.dates }}</div>
+            </div>
+            <div style="text-align: center; flex-shrink: 0;">
+              <div style="font-family: var(--display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--coral);">{{ t.days }}</div>
+              <div style="font-family: var(--mono); font-size: 9px; letter-spacing: .12em; color: rgba(244,239,228,.6); text-transform: uppercase;">days</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; margin-top: 8px; border-top: 1px solid rgba(244,239,228,.14);">
+        <div style="font-family: var(--mono); font-size: 11px; letter-spacing: .08em; color: rgba(244,239,228,.7);">1 TRIP · 4 DAYS · 1 DESTINATION</div>
+        <div style="font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--coral);">@yourhandle</div>
+      </div>
+    </div>
+
+    <!-- side controls -->
+    <div onClick="{{ stop }}" class="m-share-side" style="width: 280px; flex-shrink: 0; background: var(--card); border-radius: 26px; padding: 28px; box-shadow: 0 40px 90px -30px rgba(0,0,0,.5); animation: sheetIn .3s cubic-bezier(.2,.8,.2,1) .04s both;">
+      <div style="font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .2em; color: var(--ink);">SHARE</div>
+      <h3 style="font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -.02em; margin: 8px 0 6px;">Ready for the grid</h3>
+      <p style="font-size: 14px; color: var(--muted); line-height: 1.5; margin: 0 0 18px;">A 4:5 recap of every trip. Screenshot the card or grab the caption - then drop both into Instagram.</p>
+      <button onClick="{{ copyCaption }}" style="width: 100%; font-family: var(--body); font-weight: 700; font-size: 15px; color: #F4EFE4; background: var(--ink); border: none; padding: 14px; border-radius: 999px; cursor: pointer; transition: transform .15s ease;" style-hover="transform: translateY(-2px);">{{ copyLabel }}</button>
+      <button onClick="{{ closeShare }}" style="width: 100%; margin-top: 10px; font-family: var(--body); font-weight: 700; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 14px; border-radius: 999px; cursor: pointer;" style-hover="background:#F6F2E9;">Close</button>
+    </div>
+
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:1040}}">
+class Component extends DCLogic {
+  state = {
+    tab: 'upcoming',
+    expanded: true,
+    editTripOpen: false,
+    addWatchOpen: false,
+    shareOpen: false,
+    copied: false,
+  };
+
+  // Auto destination-photo library (free-to-use Unsplash license, keyed by IATA / city)
+  DEST_PHOTOS = {
+    FNC: 'https://commons.wikimedia.org/wiki/Special:FilePath/Panorama_of_Funchal.jpg?width=900',
+    LIS: 'https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=700&q=80',
+    BCN: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=700&q=80',
+    AThens: 'https://images.unsplash.com/photo-1555993539-1732b0258235?w=700&q=80',
+  };
+  destPhoto(code) {
+    return this.DEST_PHOTOS[code] || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=700&q=80';
+  }
+
+  tabStyle(active) {
+    const base = "font-family: var(--body); font-weight: 600; font-size: 14px; padding: 9px 20px; border-radius: 999px; cursor: pointer; border: none; transition: background .18s ease, color .18s ease; display: inline-flex; align-items: center; gap: 8px;";
+    return active
+      ? base + " background: var(--ink); color: #F4EFE4;"
+      : base + " background: transparent; color: var(--muted);";
+  }
+
+  renderVals() {
+    const tab = this.state.tab;
+    return {
+      isUpcoming: tab === 'upcoming',
+      isPast: tab === 'past',
+      isWishlist: tab === 'wishlist',
+      tabUpcoming: this.tabStyle(tab === 'upcoming'),
+      tabPast: this.tabStyle(tab === 'past'),
+      tabWishlist: this.tabStyle(tab === 'wishlist'),
+      goUpcoming: () => this.setState({ tab: 'upcoming' }),
+      goPast: () => this.setState({ tab: 'past' }),
+      goWishlist: () => this.setState({ tab: 'wishlist' }),
+
+      expanded: this.state.expanded,
+      expandLabel: this.state.expanded ? 'Hide plans' : 'Show plans',
+      expandCaret: this.state.expanded ? '▲' : '▼',
+      toggleExpand: () => this.setState(s => ({ expanded: !s.expanded })),
+
+      editTripOpen: this.state.editTripOpen,
+      addWatchOpen: this.state.addWatchOpen,
+      openEditTrip: () => this.setState({ editTripOpen: true }),
+      closeEditTrip: () => this.setState({ editTripOpen: false }),
+      openAddWatch: () => this.setState({ addWatchOpen: true }),
+      closeAddWatch: () => this.setState({ addWatchOpen: false }),
+      openTrip: () => this.setState({ tab: 'upcoming', expanded: true }),
+      stop: (e) => e.stopPropagation(),
+
+      shareOpen: this.state.shareOpen,
+      openShare: () => this.setState({ shareOpen: true, copied: false }),
+      closeShare: () => this.setState({ shareOpen: false }),
+      copyLabel: this.state.copied ? 'Copied ✓' : 'Copy caption',
+      copyCaption: () => {
+        const text = "Build Days - Madeira ✈️ OPO → FNC · 15-18 Sep 2026\n4 days chasing sun on the rock. #Madeira #Funchal #travel";
+        try { navigator.clipboard.writeText(text); } catch (e) {}
+        this.setState({ copied: true });
+        setTimeout(() => this.setState({ copied: false }), 1800);
+      },
+      trips: [
+        { id: 1, from: 'OPO', to: 'FNC', city: 'Funchal, Madeira', label: 'Build Days - Madeira', dates: '15-18 Sep 2026', days: '4', photo: this.destPhoto('FNC') },
+      ],
+
+      plans: [
+        { id: 1, title: 'TAP TP1693 · OPO → FNC', type: 'FLIGHT', sub: 'Porto to Funchal', date: '15 Sep', color: 'var(--cobalt)', tint: 'rgba(30,64,255,.1)' },
+        { id: 2, title: 'Castanheiro Boutique Hotel', type: 'HOTEL', sub: 'Rua do Castanheiro 31, Funchal', date: '15-18 Sep', color: 'var(--green)', tint: 'rgba(27,138,87,.12)' },
+        { id: 3, title: 'Airport pickup', type: 'RIDE', sub: 'FNC arrivals', date: '15 Sep', color: 'var(--purple)', tint: 'rgba(124,77,255,.12)' },
+        { id: 4, title: 'TAP TP1694 · FNC → OPO', type: 'FLIGHT', sub: 'Funchal to Porto', date: '18 Sep', color: 'var(--cobalt)', tint: 'rgba(30,64,255,.1)' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

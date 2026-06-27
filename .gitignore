@@ -1,0 +1,26 @@
+# Secrets - NEVER commit these
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+*.local
+
+# Cloudflare / Wrangler
+.wrangler/
+.mf/
+dist/
+
+# DC client (cloned locally for inspection, not part of this repo)
+dc/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

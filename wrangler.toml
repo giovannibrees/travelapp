@@ -1,0 +1,21 @@
+name = "travel-sync"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# runs every 30 minutes
+[triggers]
+crons = ["*/30 * * * *"]
+
+# create with: wrangler kv namespace create TRIPS  ->  paste the id below
+[[kv_namespaces]]
+binding = "TRIPS"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+# Secrets are NOT stored here. Set each with: wrangler secret put NAME
+#   DC_API_KEY
+#   ANTHROPIC_API_KEY
+#   GOOGLE_CLIENT_ID
+#   GOOGLE_CLIENT_SECRET
+#   GOOGLE_REFRESH_TOKEN
+#   GOOGLE_CALENDAR_ID   (optional, defaults to "primary")
+#   CALENDLY_TOKEN       (optional)
