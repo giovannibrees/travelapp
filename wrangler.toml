@@ -2,6 +2,13 @@ name = "travel-sync"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
+# Serve the front end from the SAME Worker, so one URL is both the app and the
+# API. Static files in public/ (index.html, manifest, sw.js, icons) are served
+# first; anything that is not a static file - /trips, /sync, OPTIONS, the cron -
+# falls through to worker.js.
+[assets]
+directory = "./public"
+
 # runs every 30 minutes
 [triggers]
 crons = ["*/30 * * * *"]

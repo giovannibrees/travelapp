@@ -651,11 +651,25 @@
   document.getElementById("refreshBtn").onclick=function(){refresh();};
 
   /* ===================== init (preserved seeding) ===================== */
+  // When served from the worker itself, adopt its own origin as the sync URL so
+  // the user never pastes anything. Stays local on a static-only host or file://.
+  async function probeOrigin(){
+    if(settings.workerUrl)return;                     // an explicit URL always wins
+    if(location.protocol.indexOf("http")!==0)return;  // file:// -> stay local
+    try{
+      var c=new AbortController(),to=setTimeout(function(){c.abort();},4000);
+      var res=await fetch(location.origin+"/trips",{headers:{Accept:"application/json"},signal:c.signal});
+      clearTimeout(to);
+      if(res.ok)settings.workerUrl=location.origin;   // not persisted: always reflects where it is served
+    }catch(e){}
+  }
   (async function(){
     trips=await load("trips",null);wishes=await load("wishes",null);home=await load("home",null);settings=await load("settings",null)||{workerUrl:""};
     var firstRun=(trips===null&&wishes===null);
     if(trips===null)trips=[];if(wishes===null)wishes=[];if(!home)home="OPO";
-    if(firstRun){
+    await probeOrigin();
+    // Seed the sample trip only in pure local mode; when synced the worker store is the source of truth.
+    if(firstRun && !settings.workerUrl){
       trips=[{id:uid(),dcId:null,from:"OPO",to:"FNC",start:"2026-09-15",end:"2026-09-18",label:"Build Days - Madeira",segments:[
         {type:"flight",name:"TAP TP1693 OPO to FNC",start:"2026-09-15",address:"Porto to Funchal",conf:"seed1"},
         {type:"hotel",name:"Castanheiro Boutique Hotel",start:"2026-09-15",end:"2026-09-18",address:"Rua do Castanheiro 31, Funchal",conf:"seed2"},
