@@ -236,7 +236,7 @@
     </div>
     <div class="ctl">
       <span class="status local" id="status"><span class="dot"></span>Local</span>
-      <button class="btn" id="refreshBtn" style="display:none">Refresh</button>
+      <button class="btn" id="refreshBtn" style="display:none">Sync now</button>
       <button class="btn" id="shareBtn">Share</button>
       <button class="btn" id="setBtn">Settings</button>
     </div>
@@ -648,7 +648,17 @@
     el.innerHTML='<span class="dot"></span>'+(syncState==="synced"?"Synced":syncState==="offline"?"Offline":"Local");
     document.getElementById("refreshBtn").style.display=settings.workerUrl?"":"none";
   }
-  document.getElementById("refreshBtn").onclick=function(){refresh();};
+  // Sync now: ask the worker to pull from DC/Calendar/Gmail, then reload the store.
+  async function syncNow(){
+    if(!settings.workerUrl){toast("Local mode - set a worker URL in Settings to sync");return;}
+    var b=document.getElementById("refreshBtn"),old=b?b.textContent:"";
+    if(b){b.textContent="Syncing...";b.disabled=true;}
+    try{await fetch(settings.workerUrl+"/sync",{method:"POST"});}catch(e){}
+    await refresh();
+    if(b){b.disabled=false;b.textContent=old;}
+    toast("Synced");
+  }
+  document.getElementById("refreshBtn").onclick=syncNow;
 
   /* ===================== init (preserved seeding) ===================== */
   // When served from the worker itself, adopt its own origin as the sync URL so
@@ -682,7 +692,10 @@
     }
     ensureIds();
     updateStatusChip();
-    if(settings.workerUrl){render();await refresh();}else{render();}
+    if(settings.workerUrl){
+      render();await refresh();
+      if(!trips.length)await syncNow();   // first open against an empty store: auto-pull from DC/Calendar
+    }else{render();}
   })();
 })();
 </script>

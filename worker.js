@@ -41,8 +41,9 @@ export default {
       return cors(json(store.trips[id]));
     }
     // Manual trigger (handy while testing). Cron calls runSync on its own.
+    // Awaited so the response means the sync actually finished and the store is fresh.
     if (url.pathname === "/sync" && request.method === "POST") {
-      ctx.waitUntil(runSync(env));
+      await runSync(env);
       return cors(json({ ok: true }));
     }
     return new Response("Not found", { status: 404 });
