@@ -50,13 +50,13 @@ export default {
     if (url.pathname === "/debug/dc" && request.method === "GET") {
       try {
         const overrideKey = url.searchParams.get("key");      // ?key=dk_... lets us test a key directly
-        const key = overrideKey || env.DC_API_KEY || "";
+        const key = overrideKey || dcKey(env);
         const res = await fetch(DC_BASE + "/trips", { headers: { Authorization: `Bearer ${key}`, Accept: "application/json" } });
         const text = await res.text();
         return cors(json({
           envBindings: Object.keys(env),                       // every binding this Worker actually has
-          dcKeyPresentAsSecret: !!env.DC_API_KEY,              // is DC_API_KEY set as a Worker secret?
-          usedKeyFrom: overrideKey ? "url-param" : (env.DC_API_KEY ? "secret" : "none"),
+          dcKeyPresentAsSecret: !!dcKey(env),                  // is the key set (as DC_API_KEY or DC)?
+          usedKeyFrom: overrideKey ? "url-param" : (dcKey(env) ? "secret" : "none"),
           keyPrefix: key.slice(0, 3),
           requestedUrl: DC_BASE + "/trips",
           status: res.status,
@@ -105,9 +105,11 @@ async function runSync(env) {
 
 const DC_BASE = "https://api.dynamitecircle.com";
 
+// Accept the key whether it was saved as DC_API_KEY (preferred) or DC.
+function dcKey(env) { return env.DC_API_KEY || env.DC || ""; }
 function dcHeaders(env, extra) {
   return Object.assign(
-    { Authorization: `Bearer ${env.DC_API_KEY}`, Accept: "application/json" },
+    { Authorization: `Bearer ${dcKey(env)}`, Accept: "application/json" },
     extra || {}
   );
 }
