@@ -244,8 +244,9 @@
     .hero-photo{height:180px;order:-1}
     .hero-fade{background:linear-gradient(0deg,var(--ink) 2%,rgba(22,19,12,.12) 55%,transparent 100%)}
     .stats{grid-template-columns:repeat(2,1fr)}
-    .tabs{width:100%;justify-content:space-between}
-    .tabs .tab{flex:1 1 0;justify-content:center}
+    .tabs{width:100%;gap:4px;overflow:hidden}
+    .tabs .tab{flex:1 1 0;min-width:0;justify-content:center;padding:8px 4px;font-size:13px;gap:4px}
+    .tab .cnt{margin-left:3px}
     .trip-head{grid-template-columns:1fr}
     .trip-photo{height:170px;min-height:0}
     .plan{grid-template-columns:22px 1fr;row-gap:6px}
@@ -501,7 +502,7 @@
   var CAL_PAL=["var(--cobalt)","var(--coral)","var(--green)","var(--purple)","var(--amber)","var(--rail)"];
   function renderCalendar(){
     var dayInfo={};
-    var sorted=trips.filter(function(t){return t.start&&t.end;}).sort(byStart);
+    var sorted=trips.filter(function(t){return t.start&&t.end;}).sort(function(a,b){return a.start<b.start?1:-1;});
     sorted.forEach(function(t,i){
       var col=CAL_PAL[i%CAL_PAL.length],d=parse(t.start),end=parse(t.end),guard=0;
       while(d<=end&&guard<400){var iso=isoOf(d);if(!dayInfo[iso])dayInfo[iso]={color:col,label:(t.label||codeify(t.to)||"Trip")};d.setDate(d.getDate()+1);guard++;}
@@ -514,7 +515,7 @@
       var col=CAL_PAL[i%CAL_PAL.length],route=(t.from?esc(codeify(t.from))+' → ':'')+esc(codeify(t.to));
       return '<div class="cal-leg"><span class="sw" style="background:'+col+'"></span>'+route+'<span class="dt">'+fmtRange(t.start,t.end)+'</span></div>';
     }).join('');
-    html+=legend?'<div class="cal-legend"><div class="cal-lh">Your trips - everything else is free</div>'+legend+'</div>':'<div class="empty-state" style="margin-top:18px"><div class="h">Nothing booked yet</div><p>Add a trip and the days you’re away light up across the months.</p></div>';
+    html+=legend?'<div class="cal-legend"><div class="cal-lh">Your Trips</div>'+legend+'</div>':'<div class="empty-state" style="margin-top:18px"><div class="h">Nothing booked yet</div><p>Add a trip and the days you’re away light up across the months.</p></div>';
     document.getElementById("list").innerHTML=html;
     document.querySelectorAll(".cal-tab").forEach(function(b){b.onclick=function(){calMonths=+b.dataset.cal;render();};});
   }
