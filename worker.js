@@ -49,11 +49,15 @@ export default {
     // TEMP diagnostic: shows exactly what the DC API returns. Remove once sync works.
     if (url.pathname === "/debug/dc" && request.method === "GET") {
       try {
-        const res = await fetch(DC_BASE + "/trips", { headers: dcHeaders(env) });
+        const overrideKey = url.searchParams.get("key");      // ?key=dk_... lets us test a key directly
+        const key = overrideKey || env.DC_API_KEY || "";
+        const res = await fetch(DC_BASE + "/trips", { headers: { Authorization: `Bearer ${key}`, Accept: "application/json" } });
         const text = await res.text();
         return cors(json({
-          dcKeyPresent: !!env.DC_API_KEY,
-          dcKeyPrefix: (env.DC_API_KEY || "").slice(0, 3),
+          envBindings: Object.keys(env),                       // every binding this Worker actually has
+          dcKeyPresentAsSecret: !!env.DC_API_KEY,              // is DC_API_KEY set as a Worker secret?
+          usedKeyFrom: overrideKey ? "url-param" : (env.DC_API_KEY ? "secret" : "none"),
+          keyPrefix: key.slice(0, 3),
           requestedUrl: DC_BASE + "/trips",
           status: res.status,
           ok: res.ok,
