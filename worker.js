@@ -148,35 +148,76 @@ async function dcResolvePlaceId(env, query) {
   return (place && place.placeID) || "";
 }
 
+async function dcPatch(env, path, payload) {
+  const res = await fetch(DC_BASE + path, {
+    method: "PATCH",
+    headers: dcHeaders(env, { "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body || body.ok !== true) {
+    throw new Error(`DC PATCH ${path} -> ${res.status} ${(body && body.error) || ""}`);
+  }
+  return body.data || {};
+}
+// Fetch ALL trips of one kind (upcoming or past), following pagination.
+async function dcAllTrips(env, past) {
+  let out = [], cursor = null;
+  for (let i = 0; i < 25; i++) {
+    const q = "/trips?limit=100" + (past ? "&past=true" : "") + (cursor ? "&cursor=" + encodeURIComponent(cursor) : "");
+    const data = await dcGet(env, q);
+    out = out.concat(data.trips || []);
+    cursor = data.nextCursor;
+    if (!cursor) break;
+  }
+  return out;
+}
+
 async function pullFromDC(store, env) {
-  const data = await dcGet(env, "/trips");
-  const dcTrips = data.trips || [];
+  // Pull BOTH upcoming and past trips, all pages, so nothing is missed.
+  const dcTrips = [...(await dcAllTrips(env, false)), ...(await dcAllTrips(env, true))];
   for (const dt of dcTrips) {
     const dcId = String(dt.tripID);
+    const dcUpdated = Date.parse(dt.updatedAt) || 0;
     const mapped = mapDcTrip(dt);
     let local = Object.values(store.trips).find((t) => t.dcId === dcId);
     if (!local) local = Object.values(store.trips).find((t) => !t.dcId && sig(t) === sig(mapped));
     if (local) {
       local.dcId = dcId;
-      // Merge DC-owned fields, but never blank out local data: DC has no origin
-      // field, and locally entered codes (e.g. "FNC") should not be wiped.
-      for (const k of ["to", "start", "end", "label"]) if (mapped[k]) local[k] = mapped[k];
+      // Last-writer-wins: adopt DC's version only if DC changed more recently than
+      // your local edit. Stops DC from reverting a date you just changed in the app.
+      if (dcUpdated > (local.updatedAt || 0)) {
+        for (const k of ["to", "start", "end", "label"]) if (mapped[k]) local[k] = mapped[k];
+        local.updatedAt = dcUpdated;
+      }
+      local.dcUpdatedAt = dcUpdated;
     } else {
       const id = uid();
-      store.trips[id] = { id, dcId, from: "", ...mapped, segments: [], updatedAt: Date.now() };
+      store.trips[id] = { id, dcId, from: "", ...mapped, segments: [], updatedAt: dcUpdated || Date.now(), dcUpdatedAt: dcUpdated };
     }
   }
 }
 
 async function pushToDC(store, env) {
   for (const t of Object.values(store.trips)) {
-    if (t.dcId) continue;              // already mirrored, do not duplicate
     if (!t.start || !t.end) continue;  // DC requires startDate + endDate
+    if (t.dcId) {
+      // Already in DC. If you edited it locally since the last DC sync, push ONLY
+      // the new dates (never notes/segments). Otherwise leave it untouched.
+      if ((t.updatedAt || 0) > (t.dcUpdatedAt || 0)) {
+        try {
+          await dcPatch(env, "/trips/" + encodeURIComponent(t.dcId), { startDate: t.start, endDate: t.end });
+          t.dcUpdatedAt = t.updatedAt;  // mark synced so we don't re-patch every cycle
+        } catch (e) { console.error("DC patch", e); }
+      }
+      continue;
+    }
+    // New trip -> create in DC with dates + destination only (no note/segments).
     const placeID = await dcResolvePlaceId(env, t.to || t.label || t.from);
     if (!placeID) continue;            // no resolvable destination -> skip (try again next sync)
     const data = await dcPost(env, "/trips", toDcTrip(t, placeID));
     const trip = data.trip || data;
-    if (trip && trip.tripID) t.dcId = String(trip.tripID);
+    if (trip && trip.tripID) { t.dcId = String(trip.tripID); t.dcUpdatedAt = t.updatedAt || Date.now(); }
   }
 }
 
@@ -191,12 +232,10 @@ function mapDcTrip(dt) {
     label: dt.note || loc.description || loc.city || "",
   };
 }
-// app -> DC. Destination is sent as a resolved placeID (see dcResolvePlaceId);
-// DC has no origin field, so the app's `from` is folded into the note.
+// app -> DC. ONLY the dates + the destination placeID go up. No note, label,
+// origin, or segments are ever pushed to DC.
 function toDcTrip(t, placeID) {
-  const label = t.label || "";
-  const note = t.from ? (label ? `${label} (from ${t.from})` : `from ${t.from}`) : label;
-  const body = { startDate: t.start, endDate: t.end, note };
+  const body = { startDate: t.start, endDate: t.end };
   if (placeID) body.placeID = placeID;
   return body;
 }
