@@ -178,10 +178,10 @@
   /* share overlay */
   .share-scrim{position:fixed;inset:0;background:rgba(22,19,12,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;gap:24px;padding:24px;z-index:60;overflow:auto;animation:overlayIn .2s ease both}
   .share-scrim.show{display:flex}
-  .ig-card{width:432px;height:540px;flex-shrink:0;background:var(--ink);color:var(--cream);border-radius:26px;padding:34px 34px 28px;display:flex;flex-direction:column;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);animation:sheetIn .3s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
+  .ig-card{width:432px;min-height:540px;flex-shrink:0;background:var(--ink);color:var(--cream);border-radius:26px;padding:34px 34px 28px;display:flex;flex-direction:column;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);animation:sheetIn .3s cubic-bezier(.2,.8,.2,1) both}
   .ig-head{display:flex;justify-content:space-between;align-items:flex-start}
   .ig-title{font-family:var(--display);font-weight:800;font-size:40px;line-height:.9;letter-spacing:-.03em;margin-top:6px}
-  .ig-list{flex:1;display:flex;flex-direction:column;gap:8px;margin-top:20px;overflow:auto}
+  .ig-list{flex:1;display:flex;flex-direction:column;gap:7px;margin-top:20px}
   .ig-row{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;background:rgba(244,239,228,.06);border:1px solid rgba(244,239,228,.1);border-radius:14px;padding:11px 15px}
   .ig-route{display:flex;align-items:center;gap:8px}
   .ig-route .code{font-family:var(--display);font-weight:800;font-size:17px}
@@ -219,7 +219,7 @@
     .plan{grid-template-columns:22px 1fr;row-gap:6px}
     .plan .pmeta{grid-column:1 / -1;justify-content:flex-start;padding-left:34px;flex-wrap:wrap}
     .share-scrim{flex-direction:column;align-items:center;gap:16px;padding:16px}
-    .ig-card{width:min(92vw,432px);height:auto;aspect-ratio:4 / 5}
+    .ig-card{width:min(92vw,432px);height:auto}
     .ig-side{width:min(92vw,432px)}
     .modal{padding:24px 20px}
     .two{grid-template-columns:1fr}
@@ -605,8 +605,8 @@
     var dests={};list.forEach(function(t){dests[codeify(t.to)]=1;});
     var rows=list.length?list.map(function(t){
       return '<div class="ig-row">'+
-        '<div style="min-width:0"><div class="ig-route"><span class="code">'+esc(codeify(t.from))+'</span>'+plane(13,"color:var(--coral)")+'<span class="code">'+esc(codeify(t.to))+'</span></div>'+
-          '<div class="ig-label">'+esc(t.label||codeify(t.to))+'</div><div class="ig-dates">'+fmtRange(t.start,t.end)+'</div></div>'+
+        '<div style="min-width:0"><div class="ig-route">'+(t.from?'<span class="code">'+esc(codeify(t.from))+'</span>'+plane(13,"color:var(--coral)"):'')+'<span class="code">'+esc(codeify(t.to))+'</span></div>'+
+          '<div class="ig-dates">'+fmtRange(t.start,t.end)+'</div></div>'+
         '<div class="ig-days"><div class="n">'+duration(t.start,t.end)+'</div><div class="l">days</div></div></div>';
     }).join(""):'<div style="color:rgba(244,239,228,.6);font-size:14px">No trips logged yet.</div>';
     var footMeta=list.length+" TRIP"+(list.length===1?"":"S")+" · "+totalDays+" DAYS · "+Object.keys(dests).length+" DESTINATION"+(Object.keys(dests).length===1?"":"S");
