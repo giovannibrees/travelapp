@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Travel</title>
+<meta name="theme-color" content="#ECE7DC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Travel">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -17,7 +24,7 @@
     --display:'Bricolage Grotesque',sans-serif; --body:'Archivo',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,monospace;
   }
   *{box-sizing:border-box} html,body{margin:0;padding:0}
-  body{background:var(--canvas);color:var(--ink);font-family:var(--body);line-height:1.45;-webkit-font-smoothing:antialiased;padding:40px clamp(20px,5vw,72px) 80px}
+  body{background:var(--canvas);color:var(--ink);font-family:var(--body);line-height:1.45;-webkit-font-smoothing:antialiased;padding:max(40px,env(safe-area-inset-top)) clamp(20px,5vw,72px) calc(80px + env(safe-area-inset-bottom))}
   ::selection{background:var(--coral);color:#fff}
   .wrap{max-width:1140px;margin:0 auto}
   @keyframes riseIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -262,10 +269,21 @@
   "use strict";
 
   /* ===================== storage / model (preserved) ===================== */
+  // Persistence priority: host window.storage (if embedded) -> localStorage
+  // (durable in Safari / Add-to-Home-Screen) -> in-memory (private mode last resort).
   var mem={};
   var hasStore=(typeof window.storage!=="undefined" && window.storage);
-  async function load(key,fb){try{if(hasStore){var r=await window.storage.get(key,false);if(r&&r.value!=null)return JSON.parse(r.value);return fb;}return (key in mem)?mem[key]:fb;}catch(e){return fb;}}
-  async function save(key,val){try{if(hasStore){await window.storage.set(key,JSON.stringify(val),false);}else{mem[key]=val;}}catch(e){console.error("save",e);}}
+  var hasLS=(function(){try{var k="__t"+Math.random();localStorage.setItem(k,"1");localStorage.removeItem(k);return true;}catch(e){return false;}})();
+  async function load(key,fb){try{
+    if(hasStore){var r=await window.storage.get(key,false);if(r&&r.value!=null)return JSON.parse(r.value);return fb;}
+    if(hasLS){var v=localStorage.getItem("travel:"+key);return v==null?fb:JSON.parse(v);}
+    return (key in mem)?mem[key]:fb;
+  }catch(e){return fb;}}
+  async function save(key,val){try{
+    if(hasStore){await window.storage.set(key,JSON.stringify(val),false);}
+    else if(hasLS){localStorage.setItem("travel:"+key,JSON.stringify(val));}
+    else{mem[key]=val;}
+  }catch(e){console.error("save",e);}}
 
   var trips=[], wishes=[], home="OPO", settings={workerUrl:""}, syncState="local";
   var tab="upcoming", openSet={};
@@ -653,6 +671,12 @@
     if(settings.workerUrl){render();await refresh();}else{render();}
   })();
 })();
+</script>
+<script>
+  // Register the service worker for offline + installability (only over http/https).
+  if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+    window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});
+  }
 </script>
 </body>
 </html>
