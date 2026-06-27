@@ -139,6 +139,11 @@
   .plan .x:hover{color:var(--coral);border-color:rgba(255,90,53,.35)}
   .itin .empty{color:var(--faint);font-size:13px;padding:6px 0 4px}
   .addplan{margin-top:16px;font-family:var(--body);font-weight:700;font-size:13px;color:var(--cobalt);background:rgba(30,64,255,.08);border:none;padding:10px 18px;border-radius:999px;cursor:pointer}
+  .addplan.ical{margin-left:8px;color:var(--ink);background:var(--soft)}
+  .destinfo{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;empty-cells:hide}
+  .destinfo:empty{display:none}
+  .destinfo .di{font-family:var(--mono);font-size:12px;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .destinfo .di em{color:var(--faint);font-style:normal}
   .addplan:hover{background:rgba(30,64,255,.16)}
 
   /* wishlist */
@@ -391,6 +396,108 @@
     })(imgs[i]);}
   }
 
+  /* ===================== destination info: weather, currency, plug, emergency ===================== */
+  // Country -> { currency, plug type(s), voltage, emergency number }. Fallbacks gracefully for unknowns.
+  var CINFO={
+    GB:{cur:"GBP",plug:"G",volt:"230V",em:"999"},IE:{cur:"EUR",plug:"G",volt:"230V",em:"112"},
+    US:{cur:"USD",plug:"A/B",volt:"120V",em:"911"},CA:{cur:"CAD",plug:"A/B",volt:"120V",em:"911"},
+    MX:{cur:"MXN",plug:"A/B",volt:"127V",em:"911"},BR:{cur:"BRL",plug:"C/N",volt:"127/220V",em:"190"},
+    AR:{cur:"ARS",plug:"C/I",volt:"220V",em:"911"},FR:{cur:"EUR",plug:"C/E",volt:"230V",em:"112"},
+    ES:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},PT:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},
+    IT:{cur:"EUR",plug:"C/F/L",volt:"230V",em:"112"},DE:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},
+    NL:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},BE:{cur:"EUR",plug:"C/E",volt:"230V",em:"112"},
+    CH:{cur:"CHF",plug:"C/J",volt:"230V",em:"112"},AT:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},
+    GR:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},SE:{cur:"SEK",plug:"C/F",volt:"230V",em:"112"},
+    NO:{cur:"NOK",plug:"C/F",volt:"230V",em:"112"},DK:{cur:"DKK",plug:"C/F/K",volt:"230V",em:"112"},
+    FI:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},PL:{cur:"PLN",plug:"C/E",volt:"230V",em:"112"},
+    CZ:{cur:"CZK",plug:"C/E",volt:"230V",em:"112"},HU:{cur:"HUF",plug:"C/F",volt:"230V",em:"112"},
+    HR:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},IS:{cur:"ISK",plug:"C/F",volt:"230V",em:"112"},
+    TR:{cur:"TRY",plug:"C/F",volt:"230V",em:"112"},AE:{cur:"AED",plug:"G",volt:"230V",em:"999"},
+    SA:{cur:"SAR",plug:"G",volt:"230V",em:"999"},EG:{cur:"EGP",plug:"C/F",volt:"220V",em:"122"},
+    MA:{cur:"MAD",plug:"C/E",volt:"220V",em:"19"},ZA:{cur:"ZAR",plug:"D/M/N",volt:"230V",em:"10111"},
+    KE:{cur:"KES",plug:"G",volt:"240V",em:"999"},TH:{cur:"THB",plug:"A/B/C",volt:"230V",em:"191"},
+    VN:{cur:"VND",plug:"A/C",volt:"220V",em:"113"},ID:{cur:"IDR",plug:"C/F",volt:"230V",em:"112"},
+    MY:{cur:"MYR",plug:"G",volt:"240V",em:"999"},SG:{cur:"SGD",plug:"G",volt:"230V",em:"999"},
+    PH:{cur:"PHP",plug:"A/B/C",volt:"220V",em:"911"},IN:{cur:"INR",plug:"C/D/M",volt:"230V",em:"112"},
+    LK:{cur:"LKR",plug:"D/G",volt:"230V",em:"119"},CN:{cur:"CNY",plug:"A/C/I",volt:"220V",em:"110"},
+    JP:{cur:"JPY",plug:"A/B",volt:"100V",em:"110"},KR:{cur:"KRW",plug:"C/F",volt:"220V",em:"112"},
+    TW:{cur:"TWD",plug:"A/B",volt:"110V",em:"110"},HK:{cur:"HKD",plug:"G",volt:"220V",em:"999"},
+    AU:{cur:"AUD",plug:"I",volt:"230V",em:"000"},NZ:{cur:"NZD",plug:"I",volt:"230V",em:"111"},
+    MT:{cur:"EUR",plug:"G",volt:"230V",em:"112"},CY:{cur:"EUR",plug:"G",volt:"230V",em:"112"},
+    RO:{cur:"RON",plug:"C/F",volt:"230V",em:"112"},BG:{cur:"BGN",plug:"C/F",volt:"230V",em:"112"},
+    LU:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},SI:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"},
+    SK:{cur:"EUR",plug:"C/E",volt:"230V",em:"112"},EE:{cur:"EUR",plug:"C/F",volt:"230V",em:"112"}
+  };
+  var geoCache={}, fxCache=null;
+  async function geoCity(name){
+    name=(name||"").trim();if(!name)return null;var k=name.toLowerCase();
+    if(geoCache[k]!==undefined)return geoCache[k];
+    try{var ls=localStorage.getItem("geo:"+k);if(ls)return geoCache[k]=JSON.parse(ls);}catch(e){}
+    try{
+      var r=await fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&name="+encodeURIComponent(name));
+      if(r.ok){var d=await r.json(),g=(d.results||[])[0];
+        if(g){var o={lat:g.latitude,lon:g.longitude,cc:g.country_code,country:g.country};geoCache[k]=o;try{localStorage.setItem("geo:"+k,JSON.stringify(o));}catch(e){}return o;}}
+    }catch(e){}
+    geoCache[k]=null;return null;
+  }
+  async function fxRates(){
+    if(fxCache)return fxCache;
+    try{var ls=localStorage.getItem("fx");if(ls){var o=JSON.parse(ls);if(o.t&&Date.now()-o.t<864e5)return fxCache=o.r;}}catch(e){}
+    try{var r=await fetch("https://open.er-api.com/v6/latest/EUR");if(r.ok){var d=await r.json();if(d&&d.rates){fxCache=d.rates;try{localStorage.setItem("fx",JSON.stringify({t:Date.now(),r:d.rates}));}catch(e){}return d.rates;}}}catch(e){}
+    return null;
+  }
+  function wIcon(c){c=+c;if(c===0)return"☀️";if(c<=3)return"⛅";if(c<=48)return"🌫️";if(c<=67)return"🌧️";if(c<=77)return"❄️";if(c<=82)return"🌦️";if(c<=86)return"🌨️";return"⛈️";}
+  function fmtMoney(n){return n>=100?String(Math.round(n)):n>=10?n.toFixed(1):n.toFixed(2);}
+  async function weatherFor(lat,lon,start,end){
+    var key="wx:"+lat.toFixed(2)+","+lon.toFixed(2)+":"+start+":"+end;
+    try{var ls=localStorage.getItem(key);if(ls){var o=JSON.parse(ls);if(o.t&&Date.now()-o.t<6*3600e3)return o.w;}}catch(e){}
+    var w=null;
+    try{
+      var today=new Date(),s=new Date(start+"T00:00:00"),days=(s-today)/864e5,url,typical=false;
+      if(days<=14&&(new Date(end+"T00:00:00")-today)/864e5>=-1){
+        url="https://api.open-meteo.com/v1/forecast?timezone=auto&daily=temperature_2m_max,temperature_2m_min,weather_code&latitude="+lat+"&longitude="+lon+"&start_date="+start+"&end_date="+end;
+      }else{
+        var ly=function(d){return(parseInt(d.slice(0,4))-1)+d.slice(4);};typical=true;
+        url="https://archive-api.open-meteo.com/v1/archive?timezone=auto&daily=temperature_2m_max,temperature_2m_min,weather_code&latitude="+lat+"&longitude="+lon+"&start_date="+ly(start)+"&end_date="+ly(end);
+      }
+      var r=await fetch(url);if(r.ok){var d=await r.json(),dy=d.daily||{},hi=(dy.temperature_2m_max||[]).filter(function(x){return x!=null;}),lo=(dy.temperature_2m_min||[]).filter(function(x){return x!=null;}),wc=dy.weather_code||[];
+        if(hi.length&&lo.length)w={hi:Math.round(Math.max.apply(null,hi)),lo:Math.round(Math.min.apply(null,lo)),code:wc[Math.floor(wc.length/2)]||0,typical:typical};}
+    }catch(e){}
+    try{localStorage.setItem(key,JSON.stringify({t:Date.now(),w:w}));}catch(e){}
+    return w;
+  }
+  function hydrateDest(){
+    var nodes=document.querySelectorAll(".destinfo[data-dest]");
+    for(var i=0;i<nodes.length;i++){(function(node){
+      var t=trips.find(function(x){return x.id===node.getAttribute("data-dest");});
+      if(t&&t.to)fillDest(node,t);else node.innerHTML="";
+    })(nodes[i]);}
+  }
+  async function fillDest(node,t){
+    var g=await geoCity(t.to);if(!g){node.innerHTML="";return;}
+    var ci=CINFO[g.cc]||{},parts=[];
+    if(t.start&&t.end){var w=await weatherFor(g.lat,g.lon,t.start,t.end);if(w)parts.push('<span class="di">'+wIcon(w.code)+' '+w.lo+'-'+w.hi+'°C'+(w.typical?' <em>typical</em>':'')+'</span>');}
+    if(ci.cur==="EUR"){parts.push('<span class="di">💶 Euro</span>');}
+    else if(ci.cur){var fx=await fxRates();if(fx&&fx[ci.cur]){var pe=fx[ci.cur],pu=fx.USD?fx[ci.cur]/fx.USD:0;parts.push('<span class="di">💱 €1='+fmtMoney(pe)+' '+ci.cur+(pu?' · $1='+fmtMoney(pu):'')+'</span>');}else parts.push('<span class="di">💱 '+ci.cur+'</span>');}
+    if(ci.plug)parts.push('<span class="di">🔌 Type '+ci.plug+(ci.volt?' · '+ci.volt:'')+'</span>');
+    if(ci.em)parts.push('<span class="di">🆘 '+ci.em+'</span>');
+    node.innerHTML=parts.join('');
+  }
+  /* ICS export - drop a trip into Apple / Outlook / any calendar */
+  function icsForTrip(t){
+    var dt=function(d){return d.replace(/-/g,"");};
+    var dtEnd=function(d){var x=new Date(d+"T00:00:00Z");x.setUTCDate(x.getUTCDate()+1);return x.toISOString().slice(0,10).replace(/-/g,"");};
+    var desc=(t.segments||[]).map(function(s){return (s.type||"")+": "+(s.name||"");}).join("\\n");
+    return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Travel//EN","BEGIN:VEVENT","UID:"+t.id+"@travel",
+      "DTSTART;VALUE=DATE:"+dt(t.start),"DTEND;VALUE=DATE:"+dtEnd(t.end),
+      "SUMMARY:Trip: "+((t.label||codeify(t.to)||"Travel").replace(/[,;]/g," ")),"DESCRIPTION:"+desc,"END:VEVENT","END:VCALENDAR"].join("\r\n");
+  }
+  function downloadICS(id){
+    var t=trips.find(function(x){return x.id===id;});if(!t||!t.start||!t.end){toast("Add dates first");return;}
+    var b=new Blob([icsForTrip(t)],{type:"text/calendar"}),a=document.createElement("a");
+    a.href=URL.createObjectURL(b);a.download=(codeify(t.to)||"trip")+".ics";document.body.appendChild(a);a.click();document.body.removeChild(a);toast("Calendar file ready");
+  }
+
   var CAT={flight:{c:"var(--flight)",t:"rgba(30,64,255,.1)"},hotel:{c:"var(--hotel)",t:"rgba(27,138,87,.12)"},car:{c:"var(--car)",t:"rgba(232,154,43,.14)"},ride:{c:"var(--ride)",t:"rgba(124,77,255,.12)"},rail:{c:"var(--rail)",t:"rgba(255,90,53,.12)"},other:{c:"var(--other)",t:"rgba(117,109,94,.12)"}};
   function cat(type){return CAT[type]||CAT.other;}
 
@@ -443,7 +550,7 @@
   /* ===================== trip card + itinerary (new look, preserved data) ===================== */
   function itinerary(t){
     var segs=(t.segments||[]).slice().sort(function(a,b){return(a.start||"")<(b.start||"")?-1:1;});
-    var addBtn='<button class="addplan" data-addseg="'+t.id+'">+ Add plan</button>';
+    var addBtn='<button class="addplan" data-addseg="'+t.id+'">+ Add plan</button><button class="addplan ical" data-ics="'+t.id+'">📅 Add to calendar</button>';
     if(!segs.length)return '<div class="itin"><div class="empty">No plans yet. Add one below, or synced bookings will land here.</div>'+addBtn+'</div>';
     var rows=segs.map(function(s){
       var cc=cat(s.type);
@@ -471,6 +578,7 @@
           '<div class="trip-route"><span class="code">'+esc(codeify(t.from))+'</span>'+plane(16,"color:var(--cobalt)")+'<span class="code">'+esc(codeify(t.to))+'</span></div>'+
           (t.label?'<h3>'+esc(t.label)+'</h3>':'<h3 class="empty">Untitled trip</h3>')+
           '<div class="chips"><span class="c-date">'+fmtRange(t.start,t.end)+'</span><span class="c-dur">'+duration(t.start,t.end)+' DAYS</span>'+badge+'</div>'+
+          '<div class="destinfo" data-dest="'+t.id+'"></div>'+
         '</div><div class="card-acts"><button class="mini" data-edit="'+t.id+'">Edit</button><button class="mini del" data-del="'+t.id+'">Delete</button></div></div></div>'+
       '</div>'+
       (t.notes?'<div class="tripnote">'+esc(t.notes)+'</div>':'')+
@@ -545,7 +653,7 @@
     var past=trips.filter(function(t){return!isUpcoming(t);}).sort(function(a,b){return a.start>b.start?-1:1;});
     if(tab==="upcoming")list.innerHTML=up.length?up.map(tripCard).join(""):emptyState("Nothing on the horizon","Add your next trip to start the countdown.");
     else list.innerHTML=past.length?past.map(tripCard).join(""):emptyState("No memories yet","When a trip wraps, it slides here with its photos, receipts and the route you actually flew.");
-    hydratePhotos();
+    hydratePhotos();hydrateDest();
   }
   function emptyState(h,p){return '<div class="empty-state"><div class="h">'+esc(h)+'</div><p>'+esc(p)+'</p><button class="add" onclick="document.getElementById(\'addBtn\').click()">+ Add now</button></div>';}
 
@@ -649,7 +757,7 @@
   document.getElementById("addBtn").onclick=function(){modal.dataset.editId="";openModal(tab==="wishlist"?wishForm():tripForm());bindModal();};
 
   document.getElementById("list").addEventListener("click",function(e){
-    var t=e.target.closest("[data-edit],[data-del],[data-editw],[data-delw],[data-toggle],[data-addseg],[data-editseg],[data-delseg]");
+    var t=e.target.closest("[data-edit],[data-del],[data-editw],[data-delw],[data-toggle],[data-addseg],[data-editseg],[data-delseg],[data-ics]");
     if(!t)return;
     if(t.dataset.del){if(confirm("Delete this trip?")){trips=trips.filter(function(x){return x.id!==t.dataset.del;});save("trips",trips);render();toast("Trip deleted");}}
     else if(t.dataset.edit){modal.dataset.editId=t.dataset.edit;openModal(tripForm(trips.find(function(x){return x.id===t.dataset.edit;})));bindModal();}
@@ -658,6 +766,7 @@
     else if(t.dataset.addseg){openSeg(t.dataset.addseg,null);}
     else if(t.dataset.editseg){var p=t.dataset.editseg.split("|");openSeg(p[0],p[1]);}
     else if(t.dataset.delseg){var p=t.dataset.delseg.split("|");delSeg(p[0],p[1]);}
+    else if(t.dataset.ics){downloadICS(t.dataset.ics);}
     else if(t.dataset.toggle){var id=t.dataset.toggle;openSet[id]=!openSet[id];render();}
   });
 
