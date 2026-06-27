@@ -785,7 +785,8 @@
     if(!st.ok)return;                                 // old worker without auth -> no gate
     var d=await st.json();
     if(!d.set){await showAuth("create");return;}      // first time: set up email + password
-    if(!authToken)await showAuth("login");            // exists, but this device has no (valid) token
+    // Already set: don't force a login here. The session cookie (or stored token)
+    // may already authenticate us; refresh() prompts only if /trips returns 401.
   }
 
   async function refresh(){

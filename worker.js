@@ -32,12 +32,12 @@ export default {
       if (!storedHash) {                                       // first-time setup
         await env.TRIPS.put("auth", hash);
         await env.TRIPS.put("auth_email", email);
-        return cors(json({ ok: true, token: hash }));
+        return okLogin(hash);
       }
       if (hash !== storedHash) return cors(json({ error: "wrong email or password" }, 401));
       if (!storedEmail) { await env.TRIPS.put("auth_email", email); } // migrate a password-only setup
       else if (storedEmail !== email) return cors(json({ error: "wrong email or password" }, 401));
-      return cors(json({ ok: true, token: hash }));
+      return okLogin(hash);
     }
     const blocked = await authGuard(request, env);
     if (blocked) return cors(blocked);
@@ -432,11 +432,22 @@ async function sha256(s) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-// Returns a 401 Response if a password is set and the request lacks the right X-Auth, else null.
+// Successful login: return the token AND set a durable HttpOnly session cookie
+// (survives iOS localStorage eviction, so you stay signed in ~30 days).
+function okLogin(hash) {
+  const r = cors(json({ ok: true, token: hash }));
+  r.headers.append("Set-Cookie", `tk=${hash}; Max-Age=2592000; Path=/; Secure; HttpOnly; SameSite=Lax`);
+  return r;
+}
+// Returns a 401 Response if a password is set and the request has neither a valid
+// X-Auth header nor a valid session cookie, else null.
 async function authGuard(request, env) {
   const stored = await env.TRIPS.get("auth");
   if (!stored) return null;
-  return (request.headers.get("X-Auth") || "") === stored ? null : json({ error: "unauthorized" }, 401);
+  const header = request.headers.get("X-Auth") || "";
+  const m = (request.headers.get("Cookie") || "").match(/(?:^|;\s*)tk=([^;]+)/);
+  const cookie = m ? m[1] : "";
+  return (header === stored || cookie === stored) ? null : json({ error: "unauthorized" }, 401);
 }
 
 function json(obj, status) { return new Response(JSON.stringify(obj), { status: status || 200, headers: { "Content-Type": "application/json" } }); }
