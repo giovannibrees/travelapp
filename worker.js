@@ -64,60 +64,112 @@ async function runSync(env) {
 }
 
 /* ----------------------------- DC two-way ----------------------------- */
-// The loop guard: every trip carries its DC id once known.
-// Pull matches on dcId first, then on signature (so a trip you JUST pushed is not re-created).
-// Push only sends trips that have no dcId yet, then records the id DC returns.
+// Finalized against the official DC client (github.com/dynamitecircle/dc:
+// py/dc.py) and its OpenAPI contract (contracts/openapi.json):
+//   Base URL : https://api.dynamitecircle.com   (NOT dc.dynamitecircle.com)
+//   Auth     : Authorization: Bearer dk_<key>   (Bearer, not a custom header)
+//   Envelope : success { ok:true, data:{...} } ; error { ok:false, error, message }
+//   GET  /trips                  -> data.trips[] (+ data.nextCursor). Each trip:
+//        { tripID, note, location:{ city,name,description,placeID,... },
+//          startDate, endDate, eventID, points[], roomID }
+//   POST /trips { startDate, endDate, note, placeID|eventID } -> data.trip{ tripID }
+//        startDate + endDate required; pass EXACTLY ONE of placeID / eventID.
+//   GET  /places/search?q=&limit=1 -> data.places[0].placeID  (resolve a destination)
+//
+// The loop guard: every trip carries its DC id (dcId = tripID) once known.
+// Pull matches on dcId first, then on signature (so a trip you JUST pushed is
+// not re-created). Push only sends trips that have no dcId yet, then records the
+// tripID DC returns. runSync pulls before it pushes.
+
+const DC_BASE = "https://api.dynamitecircle.com";
+
+function dcHeaders(env, extra) {
+  return Object.assign(
+    { Authorization: `Bearer ${env.DC_API_KEY}`, Accept: "application/json" },
+    extra || {}
+  );
+}
+// DC wraps every response as { ok, data } / { ok:false, error, message }.
+async function dcGet(env, path) {
+  const res = await fetch(DC_BASE + path, { headers: dcHeaders(env) });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body || body.ok !== true) {
+    throw new Error(`DC GET ${path} -> ${res.status} ${(body && body.error) || ""}`);
+  }
+  return body.data || {};
+}
+async function dcPost(env, path, payload) {
+  const res = await fetch(DC_BASE + path, {
+    method: "POST",
+    headers: dcHeaders(env, { "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body || body.ok !== true) {
+    throw new Error(`DC POST ${path} -> ${res.status} ${(body && body.error) || ""}`);
+  }
+  return body.data || {};
+}
+// DC trips are created by placeID (or eventID), never free text. Resolve the
+// app's free-text destination to a Google placeID DC accepts.
+async function dcResolvePlaceId(env, query) {
+  if (!query) return "";
+  const data = await dcGet(env, `/places/search?q=${encodeURIComponent(query)}&limit=1`);
+  const place = (data.places || [])[0];
+  return (place && place.placeID) || "";
+}
 
 async function pullFromDC(store, env) {
-  // TODO confirm the exact path + response shape from your DC Member API key docs / the dc python client.
-  const res = await fetch("https://dc.dynamitecircle.com/api/v1/trips", {
-    headers: { Authorization: `Bearer ${env.DC_API_KEY}`, Accept: "application/json" },
-  });
-  if (!res.ok) return;
-  const data = await res.json();
-  const dcTrips = data.trips || data.results || data || [];
+  const data = await dcGet(env, "/trips");
+  const dcTrips = data.trips || [];
   for (const dt of dcTrips) {
-    const dcId = String(dt.id);
+    const dcId = String(dt.tripID);
     const mapped = mapDcTrip(dt);
     let local = Object.values(store.trips).find((t) => t.dcId === dcId);
     if (!local) local = Object.values(store.trips).find((t) => !t.dcId && sig(t) === sig(mapped));
     if (local) {
       local.dcId = dcId;
-      Object.assign(local, mapped);
+      // Merge DC-owned fields, but never blank out local data: DC has no origin
+      // field, and locally entered codes (e.g. "FNC") should not be wiped.
+      for (const k of ["to", "start", "end", "label"]) if (mapped[k]) local[k] = mapped[k];
     } else {
       const id = uid();
-      store.trips[id] = { id, dcId, ...mapped, segments: [], updatedAt: Date.now() };
+      store.trips[id] = { id, dcId, from: "", ...mapped, segments: [], updatedAt: Date.now() };
     }
   }
 }
 
 async function pushToDC(store, env) {
   for (const t of Object.values(store.trips)) {
-    if (t.dcId) continue; // already mirrored, do not duplicate
-    const res = await fetch("https://dc.dynamitecircle.com/api/v1/trips", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.DC_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(toDcTrip(t)), // TODO field names per DC API
-    });
-    if (res.ok) {
-      const created = await res.json();
-      t.dcId = String(created.id || (created.trip && created.trip.id) || "");
-    }
+    if (t.dcId) continue;              // already mirrored, do not duplicate
+    if (!t.start || !t.end) continue;  // DC requires startDate + endDate
+    const placeID = await dcResolvePlaceId(env, t.to || t.label || t.from);
+    if (!placeID) continue;            // no resolvable destination -> skip (try again next sync)
+    const data = await dcPost(env, "/trips", toDcTrip(t, placeID));
+    const trip = data.trip || data;
+    if (trip && trip.tripID) t.dcId = String(trip.tripID);
   }
 }
 
-// Adjust these two to the DC payload once you see a real response.
+// DC -> app. DC trips are destination-only (no origin) and carry the label in
+// `note`. Returns only DC-owned fields; the caller preserves local `from`.
 function mapDcTrip(dt) {
+  const loc = dt.location || {};
   return {
-    from: dt.from || dt.origin || "",
-    to: dt.to || dt.destination || dt.city || dt.place || "",
-    start: norm(dt.start || dt.start_date || dt.arrival),
-    end: norm(dt.end || dt.end_date || dt.departure),
-    label: dt.title || dt.name || dt.label || "",
+    to: loc.city || loc.name || loc.description || "",
+    start: norm(dt.startDate),
+    end: norm(dt.endDate),
+    label: dt.note || loc.description || loc.city || "",
   };
 }
-function toDcTrip(t) {
-  return { city: t.to, start_date: t.start, end_date: t.end, title: t.label, notes: `from ${t.from}` };
+// app -> DC. Destination is sent as a resolved placeID (see dcResolvePlaceId);
+// DC has no origin field, so the app's `from` is folded into the note.
+function toDcTrip(t, placeID) {
+  const label = t.label || "";
+  const note = t.from ? (label ? `${label} (from ${t.from})` : `from ${t.from}`) : label;
+  const body = { startDate: t.start, endDate: t.end, note };
+  if (placeID) body.placeID = placeID;
+  return body;
 }
 
 /* --------------------------- Calendar ingest --------------------------- */
