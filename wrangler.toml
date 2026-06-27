@@ -16,7 +16,7 @@ crons = ["*/30 * * * *"]
 # create with: wrangler kv namespace create TRIPS  ->  paste the id below
 [[kv_namespaces]]
 binding = "TRIPS"
-id = "REPLACE_WITH_YOUR_KV_ID"
+id = "3401bc1218c04ba68201a41ecac772ab"
 
 # Secrets are NOT stored here. Set each with: wrangler secret put NAME
 #   DC_API_KEY
