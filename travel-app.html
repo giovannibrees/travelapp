@@ -181,9 +181,8 @@
   .ig-card{width:432px;height:540px;flex-shrink:0;background:var(--ink);color:var(--cream);border-radius:26px;padding:34px 34px 28px;display:flex;flex-direction:column;box-shadow:0 40px 90px -30px rgba(0,0,0,.7);animation:sheetIn .3s cubic-bezier(.2,.8,.2,1) both;overflow:hidden}
   .ig-head{display:flex;justify-content:space-between;align-items:flex-start}
   .ig-title{font-family:var(--display);font-weight:800;font-size:40px;line-height:.9;letter-spacing:-.03em;margin-top:6px}
-  .ig-list{flex:1;display:flex;flex-direction:column;gap:12px;margin-top:22px;overflow:hidden}
-  .ig-row{display:grid;grid-template-columns:76px 1fr auto;gap:14px;align-items:center;background:rgba(244,239,228,.06);border:1px solid rgba(244,239,228,.1);border-radius:18px;padding:12px}
-  .ig-row img{width:76px;height:76px;border-radius:14px;object-fit:cover}
+  .ig-list{flex:1;display:flex;flex-direction:column;gap:8px;margin-top:20px;overflow:auto}
+  .ig-row{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;background:rgba(244,239,228,.06);border:1px solid rgba(244,239,228,.1);border-radius:14px;padding:11px 15px}
   .ig-route{display:flex;align-items:center;gap:8px}
   .ig-route .code{font-family:var(--display);font-weight:800;font-size:17px}
   .ig-label{font-family:var(--body);font-weight:600;font-size:14px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -323,6 +322,37 @@
   function destPhoto(code,w){code=(code||"").trim().toUpperCase();var u=DEST_PHOTOS[code]||"https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1000&q=80";
     if(w)u=u.replace(/width=\d+/,"width="+w).replace(/[?&]w=\d+/,function(m){return m[0]+"w="+w;});return u;}
 
+  // Real photo of the destination, by city/place name, from Wikipedia's lead image.
+  // Cached in memory + localStorage so it only fetches once per place.
+  var photoCache={};
+  async function cityPhoto(name){
+    name=(name||"").trim();if(!name)return"";
+    var k=name.toLowerCase();
+    if(photoCache[k]!==undefined)return photoCache[k];
+    try{var ls=localStorage.getItem("photo:"+k);if(ls!=null){photoCache[k]=ls;return ls;}}catch(e){}
+    try{
+      var u="https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=1000&titles="+encodeURIComponent(name);
+      var res=await fetch(u);
+      if(res.ok){
+        var d=await res.json();
+        var pages=(d.query&&d.query.pages)||{};
+        var first=pages[Object.keys(pages)[0]];
+        var url=(first&&first.thumbnail&&first.thumbnail.source)||"";
+        photoCache[k]=url;try{localStorage.setItem("photo:"+k,url);}catch(e){}
+        return url;
+      }
+    }catch(e){}
+    photoCache[k]="";return"";
+  }
+  // After a render, upgrade every <img data-city> from the generic placeholder to the real city photo.
+  function hydratePhotos(){
+    var imgs=document.querySelectorAll("img[data-city]");
+    for(var i=0;i<imgs.length;i++){(function(img){
+      var city=img.getAttribute("data-city");
+      cityPhoto(city).then(function(url){if(url&&img.getAttribute("data-city")===city)img.src=url;});
+    })(imgs[i]);}
+  }
+
   var CAT={flight:{c:"var(--flight)",t:"rgba(30,64,255,.1)"},hotel:{c:"var(--hotel)",t:"rgba(27,138,87,.12)"},car:{c:"var(--car)",t:"rgba(232,154,43,.14)"},ride:{c:"var(--ride)",t:"rgba(124,77,255,.12)"},rail:{c:"var(--rail)",t:"rgba(255,90,53,.12)"},other:{c:"var(--other)",t:"rgba(117,109,94,.12)"}};
   function cat(type){return CAT[type]||CAT.other;}
 
@@ -349,7 +379,7 @@
           '<div class="hero-actions"><button class="hero-btn" id="heroOpen">Open itinerary <span style="font-size:17px">&rarr;</span></button>'+
             '<span class="hero-cap">'+esc(next.label||codeify(next.to))+' · '+duration(next.start,next.end)+' days</span></div>'+
         '</div>'+
-        '<div class="hero-photo"><img src="'+esc(destPhoto(next.to,1200))+'" alt="'+esc(next.to)+'"><div class="hero-fade"></div></div>'+
+        '<div class="hero-photo"><img src="'+esc(destPhoto(next.to,1200))+'" data-city="'+esc(next.to)+'" alt="'+esc(next.to)+'"><div class="hero-fade"></div></div>'+
       '</div>';
     var b=document.getElementById("heroOpen");
     if(b)b.onclick=function(){tab="upcoming";setActiveTab();openSet[next.id]=true;render();var r=document.querySelector('.trip[data-id="'+next.id+'"]');if(r)r.scrollIntoView({behavior:"smooth",block:"start"});};
@@ -398,7 +428,7 @@
     var open=openSet[t.id]?' open':'';
     return '<article class="trip'+open+'" data-id="'+t.id+'">'+
       '<div class="trip-head">'+
-        '<img class="trip-photo" src="'+esc(destPhoto(t.to,600))+'" alt="'+esc(t.to)+'">'+
+        '<img class="trip-photo" src="'+esc(destPhoto(t.to,600))+'" data-city="'+esc(t.to)+'" alt="'+esc(t.to)+'">'+
         '<div class="trip-body"><div class="trip-top"><div>'+
           '<div class="trip-route"><span class="code">'+esc(codeify(t.from))+'</span>'+plane(16,"color:var(--cobalt)")+'<span class="code">'+esc(codeify(t.to))+'</span></div>'+
           (t.label?'<h3>'+esc(t.label)+'</h3>':'<h3 class="empty">Untitled trip</h3>')+
@@ -435,11 +465,12 @@
     document.getElementById("listTitle").textContent=tab==="upcoming"?"Upcoming":tab==="past"?"Past":"Wishlist";
     document.getElementById("addBtn").textContent=tab==="wishlist"?"+ Add watch":"+ Add trip";
     var list=document.getElementById("list");
-    if(tab==="wishlist"){list.innerHTML=wishes.length?wishes.map(wishCard).join(""):emptyState("Nothing on the wishlist","Add a watch like “Anywhere, 5 days, August” for a one-tap fare search.");return;}
+    if(tab==="wishlist"){list.innerHTML=wishes.length?wishes.map(wishCard).join(""):emptyState("Nothing on the wishlist","Add a watch like “Anywhere, 5 days, August” for a one-tap fare search.");hydratePhotos();return;}
     var up=trips.filter(isUpcoming).sort(byStart);
     var past=trips.filter(function(t){return!isUpcoming(t);}).sort(function(a,b){return a.start>b.start?-1:1;});
     if(tab==="upcoming")list.innerHTML=up.length?up.map(tripCard).join(""):emptyState("Nothing on the horizon","Add your next trip to start the countdown.");
     else list.innerHTML=past.length?past.map(tripCard).join(""):emptyState("No memories yet","When a trip wraps, it slides here with its photos, receipts and the route you actually flew.");
+    hydratePhotos();
   }
   function emptyState(h,p){return '<div class="empty-state"><div class="h">'+esc(h)+'</div><p>'+esc(p)+'</p><button class="add" onclick="document.getElementById(\'addBtn\').click()">+ Add now</button></div>';}
 
@@ -570,7 +601,7 @@
     var totalDays=list.reduce(function(a,t){return a+duration(t.start,t.end);},0);
     var dests={};list.forEach(function(t){dests[codeify(t.to)]=1;});
     var rows=list.length?list.map(function(t){
-      return '<div class="ig-row"><img src="'+esc(destPhoto(t.to,300))+'" alt="'+esc(t.to)+'">'+
+      return '<div class="ig-row">'+
         '<div style="min-width:0"><div class="ig-route"><span class="code">'+esc(codeify(t.from))+'</span>'+plane(13,"color:var(--coral)")+'<span class="code">'+esc(codeify(t.to))+'</span></div>'+
           '<div class="ig-label">'+esc(t.label||codeify(t.to))+'</div><div class="ig-dates">'+fmtRange(t.start,t.end)+'</div></div>'+
         '<div class="ig-days"><div class="n">'+duration(t.start,t.end)+'</div><div class="l">days</div></div></div>';

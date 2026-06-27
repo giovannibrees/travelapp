@@ -46,27 +46,6 @@ export default {
       await runSync(env);
       return cors(json({ ok: true }));
     }
-    // TEMP diagnostic: shows exactly what the DC API returns. Remove once sync works.
-    if (url.pathname === "/debug/dc" && request.method === "GET") {
-      try {
-        const overrideKey = url.searchParams.get("key");      // ?key=dk_... lets us test a key directly
-        const key = overrideKey || dcKey(env);
-        const res = await fetch(DC_BASE + "/trips", { headers: { Authorization: `Bearer ${key}`, Accept: "application/json" } });
-        const text = await res.text();
-        return cors(json({
-          envBindings: Object.keys(env),                       // every binding this Worker actually has
-          dcKeyPresentAsSecret: !!dcKey(env),                  // is the key set (as DC_API_KEY or DC)?
-          usedKeyFrom: overrideKey ? "url-param" : (dcKey(env) ? "secret" : "none"),
-          keyPrefix: key.slice(0, 3),
-          requestedUrl: DC_BASE + "/trips",
-          status: res.status,
-          ok: res.ok,
-          bodyPreview: text.slice(0, 1500),
-        }));
-      } catch (e) {
-        return cors(json({ error: String((e && e.message) || e) }));
-      }
-    }
     return new Response("Not found", { status: 404 });
   },
 
