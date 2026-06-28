@@ -12,20 +12,43 @@ numbers, and one-tap "add to any calendar."
 > into anyone else's instance; there is no shared server. This is the "pull your
 > own data into your own dashboard" use the DC Member API is meant for.
 
-## What you get
+## ✨ Key features
 
-- 🔄 **Two-way DC trip sync** — add or edit a trip here and the **dates** sync to
-  DC; trips you already have in DC show up here. (Only dates sync to DC — never
-  your notes, hotels, or plans.)
-- 🗓️ **Calendar overview** — 3 / 6 / 12-month view of where you're away, plus
-  **"days away by year"** (tap a year for the per-trip breakdown).
-- 🌍 **"Been there" world map** — every country you've visited, filled in, with
-  visit counts.
-- 🌦️ **Per-trip intel** — weather for your dates, currency vs €/$, plug type &
-  voltage, local emergency number.
+**Trips & DC sync**
+- 🔄 **Two-way sync with DC** — add or edit a trip in the app and the **dates**
+  push to your DC account; trips already in DC (upcoming *and* past) pull back in.
+- 🔒 **Dates only, ever** — only trip start/end dates are sent to DC. Your notes,
+  hotels, flights and plans never leave your own Worker.
+- 🛟 **Safe by design** — the sync never deletes a DC trip, and your in-app edits
+  win (no more dates silently reverting).
+- 🧳 **Per-trip plans** — attach flights, hotels, rides and free-text notes to any
+  trip; manual plans are never overwritten by a sync.
+
+**Planning & overview**
+- 🗓️ **Calendar overview** — a 3 / 6 / 12-month view of exactly when you're away,
+  with every travel day marked.
+- 📊 **Days away by year** — see total days travelled per calendar year (Jan 1–Dec 31);
+  tap a year for the per-trip breakdown so any number is one tap from "why."
+- 🌍 **"Been there" world map** — every country you've set foot in, filled in on a
+  world map, each with a **visit count** (even tiny island nations).
+- 🛫 **Upcoming / Past / Wishlist** tabs, with a fare-watch wishlist for trips
+  you're still dreaming up.
+
+**At-a-glance destination intel** (auto-filled per trip)
+- 🌦️ **Weather** for your travel dates (forecast, or the typical climate if far off).
+- 💱 **Currency** vs both **€ and $**, live rates.
+- 🔌 **Plug type & voltage** so you pack the right adapter.
+- 🆘 **Local emergency number**.
+- 🖼️ **A real photo** of where you're heading.
+
+**On your phone & yours alone**
 - 📅 **Add to any calendar** — one-tap `.ics` export for Apple / Google / Outlook.
-- 📱 **Installs like an app** — "Add to Home Screen" on iPhone/Android (it's a PWA).
+- 📱 **Installs like a native app** — Add to Home Screen on iPhone or Android, opens
+  full-screen, works offline (it's a PWA). *(Step-by-step below.)*
 - 🔐 **Your own password** — set once, stays signed in for 30 days per device.
+- 🗄️ **Backup & import** — export all your trips as JSON, re-import any time.
+- 🛡️ **100% your data** — everything lives in *your* Cloudflare account; nobody
+  else (not even the repo author) can see your trips or your key.
 
 ## Deploy your own (≈5 minutes, free)
 
@@ -52,12 +75,35 @@ paste the key → Save → Test connection.** Your trips start syncing both ways
 > Your key is stored only on **your** Worker, used only server-side, and never
 > shown back to the browser in full. Hit **Disconnect** any time to remove it.
 
-### 4. Add it to your phone
+### 4. Put it on your phone's home screen
 
-Open the URL in Safari/Chrome on your phone → **Share → Add to Home Screen.**
-It now opens full-screen like a native app.
+See **"📱 Add it to your home screen"** just below for the per-phone steps.
 
 That's it. 🎉
+
+## 📱 Add it to your home screen
+
+The app is a **PWA** — once it's on your home screen it opens full-screen with
+its own icon, no browser bars, and works like a normal app (even offline for the
+parts that don't need the network).
+
+### iPhone / iPad (Safari)
+1. Open your app URL (e.g. `https://travelapp.<you>.workers.dev`) in **Safari**
+   — this must be Safari, not Chrome, on iOS.
+2. Tap the **Share** button (the square with an arrow pointing up).
+3. Scroll down and tap **Add to Home Screen**.
+4. Edit the name if you like → tap **Add** (top right).
+5. Open it from the new icon. Log in once; it stays signed in for 30 days.
+
+### Android (Chrome)
+1. Open your app URL in **Chrome**.
+2. Tap the **⋮** menu (top right).
+3. Tap **Add to Home screen** (or **Install app** if it's offered).
+4. Confirm **Add / Install**.
+5. Open it from the new icon and log in.
+
+> **Tip:** add it on every device you use — each one stays signed in on its own,
+> and they all sync through your Worker.
 
 <details>
 <summary>Prefer the command line? (optional)</summary>
