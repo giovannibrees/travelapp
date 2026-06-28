@@ -14,11 +14,11 @@ numbers, and one-tap "add to any calendar."
 
 ## A look inside
 
-| Your next trip | Year overview + days away | "Been there" map |
+| A trip at a glance | Year overview + days away | "Been there" map |
 |:---:|:---:|:---:|
-| ![Upcoming trip with countdown](docs/screenshots/upcoming.png) | ![Calendar overview and days away by year](docs/screenshots/calendar.png) | ![World map of countries visited with counts](docs/screenshots/map.png) |
+| ![Lisbon trip card with photo, weather, currency, plug type and emergency number](docs/screenshots/tripcard.png) | ![Calendar overview and days away by year](docs/screenshots/calendar.png) | ![World map of countries visited with visit counts](docs/screenshots/map.png) |
 
-<sub>Screenshots use sample trips; photos shown as placeholders.</sub>
+<sub>A sample “Lisbon” trip. The app pulls each destination's photo automatically.</sub>
 
 ## ✨ Key features
 
