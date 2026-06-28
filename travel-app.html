@@ -896,6 +896,11 @@
       '<div class="hint">Origin for new fare watches and your home base. Each watch can override it.</div>'+
       field("Worker URL","s_worker","text",settings.workerUrl,"https://travel-sync.you.workers.dev","(blank = local only)")+
       '<div class="hint">When set, trips load from your worker and new trips post to it. Blank keeps everything on this device.</div>'+
+      '<h4 style="margin-top:20px">Connect DC</h4>'+
+      '<div id="dcStatus" class="hint">Checking connection…</div>'+
+      field("Your DC API key","s_dckey","password","","dk_…","stored on your worker only")+
+      '<div class="hint">From <b>dc.dynamitecircle.com</b> → your profile menu → <b>DC Member API Key</b>. Saved only to your own Cloudflare worker — never shown back, never sent anywhere else. Powers the two-way trip sync.</div>'+
+      '<div class="modal-actions" style="margin-top:0;justify-content:flex-start;gap:8px"><button class="btn" id="dcSaveKey">Save key</button><button class="btn" id="dcTest">Test connection</button><button class="btn" id="dcClear" style="border-color:rgba(255,90,53,.4);color:var(--coral)">Disconnect</button></div>'+
       '<h4>Backup &amp; import</h4>'+
       '<div class="field"><textarea id="exp" readonly class="mono" style="min-height:90px">'+esc(snap)+'</textarea></div>'+
       '<div class="modal-actions" style="margin-top:0"><button class="btn" id="copyJson">Copy data</button><button class="btn" id="dlJson">Download</button></div>'+
@@ -906,6 +911,39 @@
     document.getElementById("copyJson").onclick=function(){copyText(JSON.stringify({version:2,home:home,trips:trips,wishes:wishes}),"Data copied");};
     document.getElementById("dlJson").onclick=function(){var b=new Blob([JSON.stringify({version:2,home:home,trips:trips,wishes:wishes},null,2)],{type:"application/json"});var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="travel.json";document.body.appendChild(a);a.click();document.body.removeChild(a);toast("Downloaded");};
     document.getElementById("clearBtn").onclick=async function(){if(!confirm("Delete all trips, plans and watches on this device?"))return;trips=[];wishes=[];openSet={};await save("trips",trips);await save("wishes",wishes);closeModal();render();toast("Cleared");};
+    // --- Connect DC: paste your dk_ key, save it to your worker, test it.
+    function dcBase(){return settings.workerUrl||location.origin;}
+    function setDcStatus(html){var el=document.getElementById("dcStatus");if(el)el.innerHTML=html;}
+    async function loadDcStatus(){
+      try{var r=await fetch(dcBase()+"/settings",{headers:authHeaders()});if(!r.ok){setDcStatus('<span style="color:var(--faint)">Sign in to manage your DC key.</span>');return;}
+        var d=await r.json();
+        if(d.dcKeySet)setDcStatus('<span style="color:var(--green)">● Connected</span> — '+esc(d.dcKeyMask||"")+(d.dcKeySource==="secret"?' <span class="opt">(dashboard secret)</span>':''));
+        else setDcStatus('<span style="color:var(--coral)">○ Not connected</span> — paste your key below to sync with DC.');
+      }catch(e){setDcStatus('<span style="color:var(--faint)">Worker not reachable.</span>');}
+    }
+    document.getElementById("dcSaveKey").onclick=async function(){
+      var k=(val("s_dckey")||"").trim();if(!k){toast("Paste your dk_ key first");return;}
+      if(k.indexOf("dk_")!==0){toast("A DC key starts with dk_");return;}
+      setDcStatus("Saving…");
+      try{var r=await fetch(dcBase()+"/settings/dckey",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({key:k})});
+        var d=await r.json();if(!r.ok){toast(d.error||"Could not save");setDcStatus("");return;}
+        document.getElementById("s_dckey").value="";toast("DC key saved");await loadDcStatus();}
+      catch(e){toast("Worker not reachable");}
+    };
+    document.getElementById("dcTest").onclick=async function(){
+      setDcStatus("Testing…");
+      try{var r=await fetch(dcBase()+"/dc/test",{headers:authHeaders()});var d=await r.json();
+        if(d.ok)setDcStatus('<span style="color:var(--green)">● Connected as '+esc(d.name)+'</span>');
+        else setDcStatus('<span style="color:var(--coral)">○ '+esc(d.error||"Key rejected")+'</span>');}
+      catch(e){setDcStatus('<span style="color:var(--coral)">○ Worker not reachable</span>');}
+    };
+    document.getElementById("dcClear").onclick=async function(){
+      if(!confirm("Disconnect DC? Your trips stay; they just stop syncing until you add a key again."))return;
+      try{await fetch(dcBase()+"/settings/dckey",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},authHeaders()),body:JSON.stringify({key:""})});
+        document.getElementById("s_dckey").value="";toast("Disconnected");await loadDcStatus();}
+      catch(e){toast("Worker not reachable");}
+    };
+    loadDcStatus();
     document.getElementById("saveSet").onclick=async function(){
       var imp=val("imp");
       home=(val("s_home")||"OPO").toUpperCase();settings.workerUrl=val("s_worker").replace(/\/+$/,"");

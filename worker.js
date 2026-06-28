@@ -42,6 +42,42 @@ export default {
     const blocked = await authGuard(request, env);
     if (blocked) return cors(blocked);
 
+    // --- In-app DC key (self-host friendly). Paste your dk_ key in Settings
+    // instead of setting a dashboard secret. Stored in YOUR OWN KV, used only
+    // server-side, and never returned to the browser in full. A dashboard
+    // secret (DC_API_KEY / DC), if present, always wins.
+    if (url.pathname === "/settings" && request.method === "GET") {
+      const kv = (await env.TRIPS.get("dc_api_key")) || "";
+      const sec = env.DC_API_KEY || env.DC || "";
+      return cors(json({
+        dcKeySet: !!(kv || sec),
+        dcKeySource: sec ? "secret" : (kv ? "in-app" : "none"),
+        dcKeyMask: sec ? "set via dashboard secret" : (kv ? maskKey(kv) : null),
+      }));
+    }
+    if (url.pathname === "/settings/dckey" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const key = ((body && body.key) || "").trim();
+      const sec = env.DC_API_KEY || env.DC || "";
+      if (key === "") {
+        await env.TRIPS.delete("dc_api_key");
+        return cors(json({ ok: true, dcKeySet: !!sec, dcKeySource: sec ? "secret" : "none", dcKeyMask: sec ? "set via dashboard secret" : null }));
+      }
+      if (!key.startsWith("dk_")) return cors(json({ error: "A DC key starts with \"dk_\"." }, 400));
+      await env.TRIPS.put("dc_api_key", key);
+      return cors(json({ ok: true, dcKeySet: true, dcKeySource: sec ? "secret" : "in-app", dcKeyMask: sec ? "set via dashboard secret" : maskKey(key) }));
+    }
+    // Validate the effective DC key against DC /profile - powers "Test connection".
+    if (url.pathname === "/dc/test" && request.method === "GET") {
+      env._dcKey = (await env.TRIPS.get("dc_api_key")) || "";
+      if (!dcKey(env)) return cors(json({ ok: false, error: "No DC key set yet." }));
+      try {
+        const p = await dcGet(env, "/profile");
+        const name = p.displayName || p.fullName || p.name || (p.profile && (p.profile.displayName || p.profile.fullName)) || "your DC account";
+        return cors(json({ ok: true, name }));
+      } catch (e) { return cors(json({ ok: false, error: "DC rejected that key." })); }
+    }
+
     // Your app reads the consolidated, segment-enriched trips from here.
     if (url.pathname === "/trips" && request.method === "GET") {
       const store = await loadStore(env);
@@ -82,6 +118,8 @@ export default {
 
 async function runSync(env) {
   const store = await loadStore(env);
+  // Resolve an in-app DC key (if any) once, so the DC calls below can use it.
+  if (env._dcKey === undefined) env._dcKey = (await env.TRIPS.get("dc_api_key")) || "";
   try { await pullFromDC(store, env); }      catch (e) { console.error("DC pull", e); }
   try { await pushToDC(store, env); }        catch (e) { console.error("DC push", e); }
   try { await ingestFromCalendar(store, env); } catch (e) { console.error("calendar", e); }
@@ -110,8 +148,11 @@ async function runSync(env) {
 
 const DC_BASE = "https://api.dynamitecircle.com";
 
-// Accept the key whether it was saved as DC_API_KEY (preferred) or DC.
-function dcKey(env) { return env.DC_API_KEY || env.DC || ""; }
+// Effective DC key. A dashboard secret (DC_API_KEY / DC) always wins; otherwise
+// fall back to a key pasted in-app (env._dcKey is loaded from KV before DC calls).
+function dcKey(env) { return env.DC_API_KEY || env.DC || env._dcKey || ""; }
+// Show enough to recognise the key without revealing it: dk_3849_••••i0
+function maskKey(k) { return k && k.length > 10 ? k.slice(0, 8) + "••••" + k.slice(-2) : "dk_••••"; }
 function dcHeaders(env, extra) {
   return Object.assign(
     { Authorization: `Bearer ${dcKey(env)}`, Accept: "application/json" },
