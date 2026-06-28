@@ -34,23 +34,32 @@ Copy/paste templates for sharing the self-hosted app with DC members. Edit to ta
 
 > Hi DC dev team,
 >
-> I built a small personal travel dashboard on top of the DC Member API — it
-> syncs my own trips two-way and adds weather/calendar/map niceties for my own
-> use. A few members asked for it, so I'd like to share it as a **deploy-it-
-> yourself** template: each person deploys their *own* copy to their *own*
-> Cloudflare account and connects their *own* `dk_` key. I'm not hosting a
-> service, not storing anyone else's data, and nobody logs into a shared
-> instance — it's strictly "pull your own data into your own dashboard," and it
-> only pushes trip *dates* to DC (never notes/plans), never deletes DC trips, and
-> always points back to the DC app for the actual interactions.
+> I'm a DC member, and I built a small personal travel dashboard on top of the
+> Member API — it pulls my own trips into a simple view (a month/year calendar of
+> when I'm away, two-way trip sync, and one place for my hotels/flights/notes),
+> plus a few extras like weather and a "been there" map.
+>
+> A few members saw it and asked for it, so I'd like to share it as a
+> **deploy-it-yourself template** rather than a hosted service. Each person
+> deploys their own copy to their own Cloudflare account and connects their own
+> `dk_` key, which means:
+>
+> - I don't host anything or store anyone else's data — there's no shared server,
+>   and nobody logs into my instance.
+> - It's strictly "pull your own data into your own dashboard."
+> - It only pushes trip *dates* to DC (never notes or plans), never deletes DC
+>   trips, and always links back to the DC app for the real interactions. It
+>   augments DC, it doesn't replace it.
 >
 > Repo (public, noncommercial license): https://github.com/giovannibrees/travelapp
 >
-> I read the API terms and believe self-hosted personal use is within them, but I
-> wanted to give you a heads-up before I post it more widely in the community —
-> if you'd rather I hold off, change anything, or add a notice, just say the word
-> and I'll act on it right away.
+> I've read the API terms and believe self-hosted personal use sits within them,
+> but I wanted to give you a heads-up before I share it more widely with members
+> (e.g. the AI channel) — if you'd prefer I hold off, change anything, or add a
+> notice, just let me know and I'll act on it right away.
 >
-> Thanks for shipping the Member API — it's great.
+> Thanks for building the Member API — it's genuinely great to work with.
 >
-> — Giovanni
+> Best,
+> Giovanni
+> Giovanni@giovannibrees.com
