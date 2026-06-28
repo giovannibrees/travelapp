@@ -151,7 +151,7 @@ const DC_BASE = "https://api.dynamitecircle.com";
 // Effective DC key. A dashboard secret (DC_API_KEY / DC) always wins; otherwise
 // fall back to a key pasted in-app (env._dcKey is loaded from KV before DC calls).
 function dcKey(env) { return env.DC_API_KEY || env.DC || env._dcKey || ""; }
-// Show enough to recognise the key without revealing it: dk_3849_••••i0
+// Show enough to recognise the key without revealing it: dk_1234_••••a9
 function maskKey(k) { return k && k.length > 10 ? k.slice(0, 8) + "••••" + k.slice(-2) : "dk_••••"; }
 function dcHeaders(env, extra) {
   return Object.assign(
