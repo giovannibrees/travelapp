@@ -12,6 +12,14 @@ numbers, and one-tap "add to any calendar."
 > into anyone else's instance; there is no shared server. This is the "pull your
 > own data into your own dashboard" use the DC Member API is meant for.
 
+## A look inside
+
+| Your next trip | Year overview + days away | "Been there" map |
+|:---:|:---:|:---:|
+| ![Upcoming trip with countdown](docs/screenshots/upcoming.png) | ![Calendar overview and days away by year](docs/screenshots/calendar.png) | ![World map of countries visited with counts](docs/screenshots/map.png) |
+
+<sub>Screenshots use sample trips; photos shown as placeholders.</sub>
+
 ## ✨ Key features
 
 **Trips & DC sync**
