@@ -4,6 +4,8 @@
 .env
 .env.*
 *.local
+# ...but DO ship the example (it holds no real values)
+!.dev.vars.example
 
 # Cloudflare / Wrangler
 .wrangler/

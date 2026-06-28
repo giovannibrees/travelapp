@@ -13,16 +13,21 @@ directory = "./public"
 [triggers]
 crons = ["*/30 * * * *"]
 
-# create with: wrangler kv namespace create TRIPS  ->  paste the id below
+# The "Deploy to Cloudflare" button AUTO-CREATES this KV namespace in the
+# deployer's own account and rewrites the id below — nothing to do.
+# Deploying by hand instead? Run:  wrangler kv namespace create TRIPS
+# and paste the returned id here.
 [[kv_namespaces]]
 binding = "TRIPS"
 id = "3401bc1218c04ba68201a41ecac772ab"
 
-# Secrets are NOT stored here. Set each with: wrangler secret put NAME
-#   DC_API_KEY
-#   ANTHROPIC_API_KEY
-#   GOOGLE_CLIENT_ID
-#   GOOGLE_CLIENT_SECRET
-#   GOOGLE_REFRESH_TOKEN
-#   GOOGLE_CALENDAR_ID   (optional, defaults to "primary")
-#   CALENDLY_TOKEN       (optional)
+# No secret is stored in this file. The DC key can be pasted IN THE APP
+# (Settings -> Connect DC) — easiest, no dashboard needed. Or set it (and the
+# optional integrations) as Worker secrets:  wrangler secret put NAME
+#   DC_API_KEY            (or just paste it in-app)
+#   ANTHROPIC_API_KEY     (optional — Gmail -> trip parsing)
+#   GOOGLE_CLIENT_ID      (optional — Google Calendar)
+#   GOOGLE_CLIENT_SECRET  (optional)
+#   GOOGLE_REFRESH_TOKEN  (optional)
+#   GOOGLE_CALENDAR_ID    (optional, defaults to "primary")
+#   CALENDLY_TOKEN        (optional)

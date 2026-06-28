@@ -1,0 +1,21 @@
+# Copy this file to ".dev.vars" for local development (`wrangler dev`).
+# For production, set the SAME names as Worker secrets:  wrangler secret put NAME
+# NEVER commit a file with real values — .dev.vars is gitignored.
+#
+# The ONLY thing most people need. And you can skip even this by pasting your
+# key in the app instead (Settings → Connect DC).
+DC_API_KEY="dk_your_dc_member_api_key"
+
+# ---- Everything below is OPTIONAL ----
+
+# Google Calendar two-way sync + Gmail trip parsing
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+GOOGLE_REFRESH_TOKEN=""
+GOOGLE_CALENDAR_ID="primary"
+
+# Gmail confirmation-email parsing into trip segments (uses Claude)
+ANTHROPIC_API_KEY=""
+
+# Calendly (optional ingestion source)
+CALENDLY_TOKEN=""
