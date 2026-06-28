@@ -1,5 +1,9 @@
 # ✈️ Travel — your own personal travel hub
 
+<p align="center">
+  <img src="docs/screenshots/travel-demo.gif" alt="Walkthrough: trip card with photo, year calendar, and been-there world map" width="300">
+</p>
+
 A single-screen travel app you **host yourself**, for free, on your own
 Cloudflare account. It syncs your trips two-way with your
 [Dynamite Circle](https://dynamitecircle.com) account (using *your* DC Member
